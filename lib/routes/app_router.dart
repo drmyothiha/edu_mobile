@@ -3,6 +3,7 @@ import '../models/user_role.dart';
 import '../services/storage_service.dart';
 import '../services/jwt_decoder.dart';
 import '../theme/app_theme.dart';
+import '../admin/screens/admin_shell_screen.dart';
 import '../teacher/routes/teacher_routes.dart';
 import '../teacher/screens/teacher_shell_screen.dart';
 import '../parents/routes/parent_routes.dart';
@@ -11,6 +12,7 @@ import '../students/routes/student_routes.dart';
 import '../students/screens/student_shell_screen.dart';
 import '../students/screens/student_under13_screen.dart';
 import '../screens/login_screen.dart';
+import '../screens/server_settings_screen.dart';
 import '../screens/student_wallet_screen.dart';
 import '../screens/gate_verifier_screen.dart';
 import '../screens/classroom_sync_screen.dart';
@@ -49,7 +51,23 @@ class AppRouter {
       );
     }
 
-    // 5. Default root dispatcher: resolves JWT role and dispatches to appropriate role UI
+    // 4b. Server Settings route
+    if (name == AppRoutes.settings) {
+      return MaterialPageRoute(
+        settings: settings,
+        builder: (_) => const ServerSettingsScreen(),
+      );
+    }
+
+    // 5. Admin Portal route
+    if (name == AppRoutes.admin) {
+      return MaterialPageRoute(
+        settings: settings,
+        builder: (_) => AdminShellScreen(onSwitchRole: () {}),
+      );
+    }
+
+    // 6. Default root dispatcher: resolves JWT role and dispatches to appropriate role UI
     return MaterialPageRoute(
       settings: settings,
       builder: (_) => const RoleDispatcherScreen(),
@@ -127,6 +145,18 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
                   style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                 ),
                 const SizedBox(height: 16),
+                _buildRoleDialogTile(
+                  icon: Icons.admin_panel_settings,
+                  color: const Color(0xFF312E81),
+                  title: 'School Admin (ကျောင်းအုပ်ကြီး)',
+                  subtitle: 'Kiosk provisioning • MMR013035-BEHS01 • School oversight',
+                  onTap: () => _switchToRole(
+                    role: AppUserRole.admin,
+                    fullName: 'U Aung Myo (ဦးအောင်မျိုး)',
+                    email: 'admin.ygn@edu.local',
+                  ),
+                ),
+                const SizedBox(height: 8),
                 _buildRoleDialogTile(
                   icon: Icons.school,
                   color: Colors.teal,
@@ -318,6 +348,8 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
 
     // 2. Route directly to Role-specific UI
     switch (effectiveRole) {
+      case AppUserRole.admin:
+        return AdminShellScreen(onSwitchRole: _showRoleSwitchDialog);
       case AppUserRole.teacher:
         return TeacherShellScreen(onSwitchRole: _showRoleSwitchDialog);
       case AppUserRole.guardian:

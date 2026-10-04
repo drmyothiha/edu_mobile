@@ -125,4 +125,34 @@ class GuardianChild {
       }
     };
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'fullName': fullName,
+      'email': email,
+      'rollNo': rollNo,
+      'gradeLevel': gradeLevel,
+      'className': className,
+      'schoolName': schoolName,
+      'schoolCode': schoolCode,
+      'age': age,
+      'nationalStudentId': nationalStudentId,
+      'attendanceRatePct': attendanceRatePct,
+      'sessionsPresent': sessionsPresent,
+      'sessionsAbsent': sessionsAbsent,
+      'termGradePoint': termGradePoint,
+      'examScores': examScores,
+      'calculatedBmi': calculatedBmi,
+      'bmiCategory': bmiCategory,
+      'dewormingCompleted': dewormingCompleted,
+      'visionCheck': visionCheck,
+      'dominantEmotionalState': dominantEmotionalState,
+      'did': did,
+      'blockchainAddress': blockchainAddress,
+      'credentialHash': credentialHash,
+      'anchorStatus': anchorStatus,
+      'rawCredential': rawCredential,
+    };
+  }
 }

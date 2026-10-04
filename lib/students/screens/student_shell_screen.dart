@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
-import '../../theme/app_theme.dart';
-import '../../screens/classroom_sync_screen.dart';
 import '../../screens/notifications_screen.dart';
+import 'student_curriculum_calendar_screen.dart';
 import 'student_wallet_screen.dart';
 import 'student_under13_screen.dart';
+import 'student_settings_screen.dart';
 
 /// Dedicated Student Shell Screen & UI container.
-/// Hosts Student-specific workflows:
-/// 1. Self-Sovereign Identity (W3C VC) digital student wallet (Age >= 13)
-/// 2. Under-13 Protection Policy gate (Age < 13 directed to Guardian)
-/// 3. Classroom Attendance & Whole-Child competency reports
-/// 4. School announcements and alerts
+/// Optimized for maximum space by removing the top bar.
+/// Hosts Student workflows:
+/// 1st Tab: Curriculum timetable in week-view calendar interface (Week row at top)
+/// 2nd Tab: Digital Student ID Card (W3C VC Wallet for age >= 13)
+/// 3rd Tab: School announcements & real-time notices
+/// 4th Tab: Settings page (Standards profile, settings, logout, about, etc.)
 class StudentShellScreen extends StatefulWidget {
   final int initialTab;
   final VoidCallback? onSwitchRole;
@@ -55,18 +56,12 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
     });
   }
 
-  void _handleSignOut() async {
-    await StorageService.clearSession();
-    if (mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF4C8DFF))),
       );
     }
 
@@ -78,105 +73,20 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
       );
     }
 
-    final studentName = _studentUser?.fullName.isNotEmpty == true
-        ? _studentUser!.fullName
-        : 'Alice Walker (Grade 8)';
-    final gradeText = _studentUser?.gradeLevel ?? 'Grade 8';
-
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.indigo.shade800,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    radius: 18,
-                    child: const Icon(Icons.person, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                studentName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.indigo.shade600,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'STUDENT',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          '$gradeText • Student ID Wallet',
-                          style: TextStyle(
-                            color: Colors.indigo.shade100,
-                            fontSize: 10,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.switch_account_outlined, color: Colors.white, size: 22),
-                    tooltip: 'Switch Role (RBAC)',
-                    onPressed: widget.onSwitchRole,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.white, size: 20),
-                    tooltip: 'Sign Out',
-                    onPressed: _handleSignOut,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      backgroundColor: Colors.black,
+      // Top bar removed to save maximum vertical space for student curriculum & tools
       body: IndexedStack(
         index: _currentIndex,
         children: [
+          // 1st Tab: Curriculum Week View Calendar App (starts directly with Week row at top)
+          StudentCurriculumCalendarScreen(onSwitchMode: widget.onSwitchRole),
+          // 2nd Tab: Digital Student ID Card (W3C VC Wallet)
           StudentWalletScreen(onSwitchMode: widget.onSwitchRole ?? () {}),
-          ClassroomSyncScreen(onSwitchMode: widget.onSwitchRole),
+          // 3rd Tab: School Notices & Announcements
           NotificationsScreen(onSwitchMode: widget.onSwitchRole),
+          // 4th Tab: Settings Page (Standards profile, settings, logout, about, etc.)
+          StudentSettingsScreen(onSwitchRole: widget.onSwitchRole),
         ],
       ),
       bottomNavigationBar: _buildStudentBottomNav(),
@@ -186,32 +96,38 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
   Widget _buildStudentBottomNav() {
     final items = [
       _StudentNavItem(
-        icon: Icons.wallet_outlined,
-        activeIcon: Icons.wallet,
-        label: 'ID Card',
-        subtitle: 'W3C VC',
+        icon: Icons.calendar_view_week_outlined,
+        activeIcon: Icons.calendar_view_week,
+        label: 'အချိန်ဇယား',
+        subtitle: 'အပတ်စဉ်',
       ),
       _StudentNavItem(
-        icon: Icons.hub_outlined,
-        activeIcon: Icons.hub,
-        label: 'Whole-Child',
-        subtitle: 'Attendance',
+        icon: Icons.wallet_outlined,
+        activeIcon: Icons.wallet,
+        label: 'ကတ်ပြား',
+        subtitle: 'ဒီဂျစ်တယ်',
       ),
       _StudentNavItem(
         icon: Icons.notifications_outlined,
         activeIcon: Icons.notifications,
-        label: 'Notices',
-        subtitle: 'Alerts',
+        label: 'သတင်းလွှာ',
+        subtitle: 'အသိပေးချက်',
+      ),
+      _StudentNavItem(
+        icon: Icons.settings_outlined,
+        activeIcon: Icons.settings,
+        label: 'ဆက်တင်',
+        subtitle: 'ပရိုဖိုင်',
       ),
     ];
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        color: const Color(0xFF0F1015), // Dark bottom bar matching calendar
+        border: const Border(top: BorderSide(color: Color(0xFF1E2028))),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -219,12 +135,12 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: Row(
             children: List.generate(items.length, (idx) {
               final item = items[idx];
               final isSelected = _currentIndex == idx;
-              final color = isSelected ? Colors.indigo.shade800 : AppTheme.textMuted;
+              final color = isSelected ? const Color(0xFF4C8DFF) : const Color(0xFF6B7280);
 
               return Expanded(
                 child: Padding(
@@ -234,44 +150,40 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
                     behavior: HitTestBehavior.opaque,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.indigo.withValues(alpha: 0.08) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
+                        color: isSelected ? const Color(0xFF4C8DFF).withValues(alpha: 0.12) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected ? Colors.indigo.withValues(alpha: 0.25) : Colors.transparent,
+                          color: isSelected ? const Color(0xFF4C8DFF).withValues(alpha: 0.35) : Colors.transparent,
                         ),
                       ),
-                      child: Row(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(isSelected ? item.activeIcon : item.icon, color: color, size: 20),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.label,
-                                  style: TextStyle(
-                                    color: color,
-                                    fontSize: 11,
-                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  item.subtitle,
-                                  style: TextStyle(
-                                    color: isSelected ? Colors.indigo.shade600 : Colors.grey.shade500,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                          const SizedBox(height: 3),
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            item.subtitle,
+                            style: TextStyle(
+                              color: isSelected ? const Color(0xFF93C5FD) : const Color(0xFF555966),
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),

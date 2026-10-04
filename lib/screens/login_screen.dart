@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/user_role.dart';
 import '../services/api_service.dart';
@@ -25,16 +24,33 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _error;
   bool _showServerConfig = false;
+  String _currentServerUrl = StorageService.productionServerUrl;
 
   @override
   void initState() {
     super.initState();
     StorageService.getServerUrl().then((url) {
-      _serverUrlController.text = url;
+      if (mounted) {
+        setState(() {
+          _currentServerUrl = url;
+          _serverUrlController.text = url;
+        });
+      }
     });
 
     _selectedRole = widget.preselectedRole ?? AppUserRole.guardian;
     _fillDemoCredentials(_selectedRole);
+  }
+
+  Future<void> _openServerSettings() async {
+    await Navigator.pushNamed(context, AppRoutes.settings);
+    if (mounted) {
+      final updatedUrl = await StorageService.getServerUrl();
+      setState(() {
+        _currentServerUrl = updatedUrl;
+        _serverUrlController.text = updatedUrl;
+      });
+    }
   }
 
   void _fillDemoCredentials(AppUserRole role, {bool under13 = false}) {
@@ -42,21 +58,25 @@ class _LoginScreenState extends State<LoginScreen> {
       _selectedRole = role;
       _error = null;
       switch (role) {
+        case AppUserRole.admin:
+          _emailController.text = 'admin@mmr013035-behs01.edu.local';
+          _passwordController.text = 'mth';
+          break;
         case AppUserRole.teacher:
-          _emailController.text = 'teacher.smith@edu.local';
-          _passwordController.text = 'Teacher123!';
+          _emailController.text = '0911111';
+          _passwordController.text = 'mth';
           break;
         case AppUserRole.guardian:
-          _emailController.text = 'parent.clark@edu.local';
-          _passwordController.text = 'Parent123!';
+          _emailController.text = '0922222';
+          _passwordController.text = 'mth';
           break;
         case AppUserRole.student:
           if (under13) {
             _emailController.text = 'su.g5@intaing.edu.local';
-            _passwordController.text = 'Student123!';
+            _passwordController.text = 'mth';
           } else {
             _emailController.text = 'student.alice@edu.local';
-            _passwordController.text = 'Student123!';
+            _passwordController.text = 'mth';
           }
           break;
       }
@@ -86,7 +106,16 @@ class _LoginScreenState extends State<LoginScreen> {
         user = data['user'] as Map<String, dynamic>;
       } catch (backendError) {
         // Fallback for offline demo accounts
-        if (email.contains('teacher') || email == '0911111') {
+        if (email.contains('admin') || email == '0944444') {
+          user = {
+            'id': 'd0000000-0000-0000-0000-000000000099',
+            'email': email,
+            'full_name': 'U Aung Myo (ဦးအောင်မျိုး - ကျောင်းအုပ်ကြီး)',
+            'role': 'admin',
+            'school_name': 'BEHS Intaing (အထက အင်းတိုင်)',
+            'school_id': '0ac3f6b3-ce6d-4d15-bb4c-9b868f41aeb4',
+          };
+        } else if (email.contains('teacher') || email == '0911111') {
           user = {
             'id': 'd0000000-0000-0000-0000-000000000001',
             'email': email,
@@ -94,7 +123,9 @@ class _LoginScreenState extends State<LoginScreen> {
             'role': 'teacher',
             'school_name': 'BEHS Intaing (အင်းတိုင် အထက)',
           };
-        } else if (email.contains('parent') || email.contains('guardian') || email == '0922222') {
+        } else if (email.contains('parent') ||
+            email.contains('guardian') ||
+            email == '0922222') {
           user = {
             'id': 'd0000000-0000-0000-0000-000000000002',
             'email': email,
@@ -149,10 +180,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // If user is a student, fetch or cache credential
       if (user['role'] == 'student' && user['id'] != null) {
-        await ApiService.fetchStudentBlockchainID(user['id'].toString()).catchError((_) => <String, dynamic>{});
+        await ApiService.fetchStudentBlockchainID(
+          user['id'].toString(),
+        ).catchError((_) => <String, dynamic>{});
       }
 
-      final jwtRole = JwtDecoder.getRole(token) ?? AppUserRoleExtension.fromString(user['role']?.toString());
+      final jwtRole =
+          JwtDecoder.getRole(token) ??
+          AppUserRoleExtension.fromString(user['role']?.toString());
       final targetRoute = AppRoutes.getRouteForRole(jwtRole);
 
       if (mounted) {
@@ -178,6 +213,13 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edu Mobile Portal Login'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Server Settings (ဆာဗာချိန်ညှိမှု)',
+            onPressed: _openServerSettings,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -186,14 +228,70 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             const Text(
               'Sign In to EduMobile',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
             ),
             const SizedBox(height: 6),
             const Text(
               'Select your role to access role-specific features (Teacher, Guardian, or Student >=13).',
               style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+
+            // Server Indicator Chip (clickable to edit)
+            InkWell(
+              onTap: _openServerSettings,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.cloud_done_outlined,
+                      size: 16,
+                      color: AppTheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Server: $_currentServerUrl',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Change',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryDark,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
 
             // Role Selector Chips
             const Text(
@@ -204,24 +302,31 @@ class _LoginScreenState extends State<LoginScreen> {
             Row(
               children: [
                 _buildRoleButton(
-                  role: AppUserRole.guardian,
-                  icon: Icons.family_restroom,
-                  label: 'Guardian',
-                  subtitle: 'မိဘ/အုပ်ထိန်းသူ',
+                  role: AppUserRole.admin,
+                  icon: Icons.admin_panel_settings,
+                  label: 'Admin',
+                  subtitle: 'ကျောင်းအုပ်',
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _buildRoleButton(
                   role: AppUserRole.teacher,
                   icon: Icons.school,
                   label: 'Teacher',
                   subtitle: 'ဆရာ/ဆရာမ',
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                _buildRoleButton(
+                  role: AppUserRole.guardian,
+                  icon: Icons.family_restroom,
+                  label: 'Guardian',
+                  subtitle: 'မိဘ/အုပ်ထိန်း',
+                ),
+                const SizedBox(width: 6),
                 _buildRoleButton(
                   role: AppUserRole.student,
                   icon: Icons.person,
                   label: 'Student',
-                  subtitle: 'ကျောင်းသား/သူ',
+                  subtitle: 'ကျောင်းသား',
                 ),
               ],
             ),
@@ -238,7 +343,11 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.privacy_tip_outlined, size: 18, color: Colors.blue.shade800),
+                  Icon(
+                    Icons.privacy_tip_outlined,
+                    size: 18,
+                    color: Colors.blue.shade800,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -246,12 +355,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Text(
                           'Child Online Protection Policy',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blue.shade900),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.blue.shade900,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           'Students under 13 cannot use independent mobile logins. Their attendance, records, and digital ID card are viewed through their Guardian\'s account.',
-                          style: TextStyle(fontSize: 10, color: Colors.blue.shade900, height: 1.3),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.blue.shade900,
+                            height: 1.3,
+                          ),
                         ),
                       ],
                     ),
@@ -272,12 +389,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                    Icon(
+                      Icons.error_outline,
+                      color: Colors.red.shade700,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _error!,
-                        style: TextStyle(color: Colors.red.shade900, fontSize: 12),
+                        style: TextStyle(
+                          color: Colors.red.shade900,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],
@@ -285,7 +409,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
             // Email
-            const Text('Account Identifier / Email', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+            const Text(
+              'Account Identifier / Email',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _emailController,
@@ -293,13 +420,18 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: InputDecoration(
                 hintText: 'user@edu.local or phone 09...',
                 prefixIcon: const Icon(Icons.email_outlined, size: 20),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
             const SizedBox(height: 16),
 
             // Password
-            const Text('Password', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+            const Text(
+              'Password',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _passwordController,
@@ -307,18 +439,33 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: InputDecoration(
                 hintText: '••••••••',
                 prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
             const SizedBox(height: 20),
 
             // Server URL toggle
             GestureDetector(
-              onTap: () => setState(() => _showServerConfig = !_showServerConfig),
+              onTap: () =>
+                  setState(() => _showServerConfig = !_showServerConfig),
               child: Row(
                 children: [
-                  Icon(_showServerConfig ? Icons.arrow_drop_down : Icons.arrow_right, color: AppTheme.primary),
-                  const Text('Advanced: Server Backend URL', style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w700)),
+                  Icon(
+                    _showServerConfig
+                        ? Icons.arrow_drop_down
+                        : Icons.arrow_right,
+                    color: AppTheme.primary,
+                  ),
+                  const Text(
+                    'Advanced: Server Backend URL',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -327,16 +474,28 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _serverUrlController,
                 decoration: InputDecoration(
-                  hintText: kIsWeb ? 'http://localhost:8080' : 'http://10.0.2.2:8080 or http://192.168.1.x:8080',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                  helperText: kIsWeb
-                      ? 'Running on Web: defaults to http://localhost:8080'
-                      : 'Use 10.0.2.2 for Android Emulator, localhost for iOS, or LAN IP for device',
+                  hintText: 'https://136.85.95.216 or http://10.0.2.2:8080',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  helperText:
+                      'Defaults to https://136.85.95.216. You can also open the full settings page below.',
                   helperStyle: const TextStyle(fontSize: 10),
                 ),
               ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.settings, size: 16),
+                  label: const Text(
+                    'Open Server Settings Page (IP ချိန်ညှိမှု)',
+                  ),
+                  onPressed: _openServerSettings,
+                ),
+              ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Login Button
             SizedBox(
@@ -344,7 +503,14 @@ class _LoginScreenState extends State<LoginScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleLogin,
                 child: _isLoading
-                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : Text('Sign In as ${_selectedRole.labelEn}'),
               ),
             ),
@@ -353,8 +519,12 @@ class _LoginScreenState extends State<LoginScreen> {
             // Demo Fill Buttons
             const Center(
               child: Text(
-                'Demo One-Tap Fast Sign-In:',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textMuted),
+                'One-Tap Role Fast Sign-In (Password: "mth"):',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -364,24 +534,54 @@ class _LoginScreenState extends State<LoginScreen> {
               alignment: WrapAlignment.center,
               children: [
                 ActionChip(
-                  avatar: const Icon(Icons.family_restroom, size: 16),
-                  label: const Text('Guardian (Daw Khin Mar)', style: TextStyle(fontSize: 11)),
-                  onPressed: () => _fillDemoCredentials(AppUserRole.guardian),
+                  avatar: const Icon(
+                    Icons.admin_panel_settings,
+                    size: 16,
+                    color: AppTheme.primary,
+                  ),
+                  label: const Text(
+                    'School Admin',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () => _fillDemoCredentials(AppUserRole.admin),
                 ),
                 ActionChip(
                   avatar: const Icon(Icons.school, size: 16),
-                  label: const Text('Teacher (Daw Thida)', style: TextStyle(fontSize: 11)),
+                  label: const Text(
+                    'Teacher (0911111)',
+                    style: TextStyle(fontSize: 11),
+                  ),
                   onPressed: () => _fillDemoCredentials(AppUserRole.teacher),
                 ),
                 ActionChip(
-                  avatar: const Icon(Icons.person, size: 16),
-                  label: const Text('Student >=13 (Alice Walker)', style: TextStyle(fontSize: 11)),
-                  onPressed: () => _fillDemoCredentials(AppUserRole.student, under13: false),
+                  avatar: const Icon(Icons.family_restroom, size: 16),
+                  label: const Text(
+                    'Guardian (0922222)',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  onPressed: () => _fillDemoCredentials(AppUserRole.guardian),
                 ),
                 ActionChip(
-                  avatar: const Icon(Icons.shield, size: 16, color: Colors.amber),
-                  label: const Text('Student <13 (Su Su, Age 10)', style: TextStyle(fontSize: 11)),
-                  onPressed: () => _fillDemoCredentials(AppUserRole.student, under13: true),
+                  avatar: const Icon(Icons.person, size: 16),
+                  label: const Text(
+                    'Student >=13 (Alice)',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  onPressed: () =>
+                      _fillDemoCredentials(AppUserRole.student, under13: false),
+                ),
+                ActionChip(
+                  avatar: const Icon(
+                    Icons.shield,
+                    size: 16,
+                    color: Colors.amber,
+                  ),
+                  label: const Text(
+                    'Student <13 (Su Su)',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  onPressed: () =>
+                      _fillDemoCredentials(AppUserRole.student, under13: true),
                 ),
               ],
             ),
@@ -405,7 +605,9 @@ class _LoginScreenState extends State<LoginScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primary.withValues(alpha: 0.1) : Colors.white,
+            color: isSelected
+                ? AppTheme.primary.withValues(alpha: 0.1)
+                : Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected ? AppTheme.primary : Colors.grey.shade300,
@@ -414,7 +616,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? AppTheme.primary : Colors.grey.shade600, size: 22),
+              Icon(
+                icon,
+                color: isSelected ? AppTheme.primary : Colors.grey.shade600,
+                size: 22,
+              ),
               const SizedBox(height: 4),
               Text(
                 label,
@@ -428,7 +634,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 9,
-                  color: isSelected ? AppTheme.primaryLight : AppTheme.textMuted,
+                  color: isSelected
+                      ? AppTheme.primaryLight
+                      : AppTheme.textMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),

@@ -8,6 +8,8 @@ class VerifiableCredential {
   final String validFrom;
   final String? validUntil;
   final StudentSubject credentialSubject;
+  final CredentialSchema? credentialSchema;
+  final CredentialStatus? credentialStatus;
   final CredentialProof proof;
 
   VerifiableCredential({
@@ -18,6 +20,8 @@ class VerifiableCredential {
     required this.validFrom,
     this.validUntil,
     required this.credentialSubject,
+    this.credentialSchema,
+    this.credentialStatus,
     required this.proof,
   });
 
@@ -39,6 +43,14 @@ class VerifiableCredential {
       validUntil: json['validUntil']?.toString(),
       credentialSubject: StudentSubject.fromJson(
           json['credentialSubject'] as Map<String, dynamic>? ?? {}),
+      credentialSchema: json['credentialSchema'] != null
+          ? CredentialSchema.fromJson(
+              json['credentialSchema'] as Map<String, dynamic>)
+          : null,
+      credentialStatus: json['credentialStatus'] != null
+          ? CredentialStatus.fromJson(
+              json['credentialStatus'] as Map<String, dynamic>)
+          : null,
       proof: CredentialProof.fromJson(
           json['proof'] as Map<String, dynamic>? ?? {}),
     );
@@ -52,7 +64,67 @@ class VerifiableCredential {
         'validFrom': validFrom,
         if (validUntil != null) 'validUntil': validUntil,
         'credentialSubject': credentialSubject.toJson(),
+        if (credentialSchema != null)
+          'credentialSchema': credentialSchema!.toJson(),
+        if (credentialStatus != null)
+          'credentialStatus': credentialStatus!.toJson(),
         'proof': proof.toJson(),
+      };
+}
+
+class CredentialSchema {
+  final String id;
+  final String type;
+
+  CredentialSchema({
+    required this.id,
+    required this.type,
+  });
+
+  factory CredentialSchema.fromJson(Map<String, dynamic> json) {
+    return CredentialSchema(
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'JsonSchema',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type,
+      };
+}
+
+class CredentialStatus {
+  final String id;
+  final String type;
+  final String statusPurpose;
+  final String statusListIndex;
+  final String statusListCredential;
+
+  CredentialStatus({
+    required this.id,
+    required this.type,
+    required this.statusPurpose,
+    required this.statusListIndex,
+    required this.statusListCredential,
+  });
+
+  factory CredentialStatus.fromJson(Map<String, dynamic> json) {
+    return CredentialStatus(
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'BitstringStatusListEntry',
+      statusPurpose: json['statusPurpose']?.toString() ?? 'revocation',
+      statusListIndex: json['statusListIndex']?.toString() ?? '0',
+      statusListCredential: json['statusListCredential']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type,
+        'statusPurpose': statusPurpose,
+        'statusListIndex': statusListIndex,
+        'statusListCredential': statusListCredential,
       };
 }
 
@@ -65,7 +137,7 @@ class StudentSubject {
   final String region;
   final String township;
   final String academicYear;
-  final String publicKey;
+  final String? publicKey;
 
   StudentSubject({
     required this.id,
@@ -76,7 +148,7 @@ class StudentSubject {
     required this.region,
     required this.township,
     required this.academicYear,
-    required this.publicKey,
+    this.publicKey,
   });
 
   factory StudentSubject.fromJson(Map<String, dynamic> json) {
@@ -89,7 +161,7 @@ class StudentSubject {
       region: json['region']?.toString() ?? '',
       township: json['township']?.toString() ?? '',
       academicYear: json['academic_year']?.toString() ?? '',
-      publicKey: json['public_key']?.toString() ?? '',
+      publicKey: json['public_key']?.toString(),
     );
   }
 
@@ -102,7 +174,8 @@ class StudentSubject {
         'region': region,
         'township': township,
         'academic_year': academicYear,
-        'public_key': publicKey,
+        if (publicKey != null && publicKey!.isNotEmpty)
+          'public_key': publicKey,
       };
 }
 

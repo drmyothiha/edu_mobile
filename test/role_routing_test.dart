@@ -94,6 +94,9 @@ void main() {
 
       final walletRoute = StudentRoutes.generateRoute(const RouteSettings(name: '/students/wallet'));
       expect(walletRoute, isNotNull);
+
+      final settingsRoute = StudentRoutes.generateRoute(const RouteSettings(name: '/students/settings'));
+      expect(settingsRoute, isNotNull);
     });
 
     test('AppRouter dispatches to role routes based on namespace', () {
@@ -211,15 +214,72 @@ void main() {
       await tester.pumpWidget(const EduMobileApp());
       await tester.pumpAndSettle();
 
-      // Check Student Shell UI elements
-      expect(find.text('STUDENT'), findsOneWidget);
-      expect(find.text('Alice Walker (Grade 8)'), findsOneWidget);
-      expect(find.text('Student ID Wallet'), findsOneWidget);
+      // Check Student navigation tabs (1st = Curriculum/အချိန်ဇယား, 2nd = ID Card/ကတ်ပြား, 3rd = Notices/သတင်းလွှာ, 4th = Settings/ဆက်တင်)
+      expect(find.text('အချိန်ဇယား'), findsOneWidget);
+      expect(find.text('ကတ်ပြား'), findsOneWidget);
+      expect(find.text('သတင်းလွှာ'), findsOneWidget);
+      expect(find.text('ဆက်တင်'), findsOneWidget);
+      expect(find.text('Whole-Child'), findsNothing);
 
-      // Check Student navigation tabs
-      expect(find.text('ID Card'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsOneWidget);
-      expect(find.text('Notices'), findsOneWidget);
+      // Top bar removed to save space: starts directly with Week row at top
+      expect(find.text('MON'), findsOneWidget);
+      expect(find.text('SUN'), findsOneWidget);
+      expect(find.text('လက်ရှိအချိန်'), findsOneWidget);
+      expect(find.textContaining('Mathematics'), findsWidgets);
+      expect(find.text('2026 / 9'), findsNothing);
+
+      // Tap 4th tab (Settings) to verify Standards profile, settings, logout, and about
+      await tester.tap(find.text('ဆက်တင်'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Settings & Profile'), findsOneWidget);
+      expect(find.text('Alice Walker (Grade 8)'), findsOneWidget);
+      expect(find.text('STUDENT'), findsOneWidget);
+      expect(find.textContaining('Standards Profile'), findsWidgets);
+      expect(find.text('Sign Out (အကောင့်မှ ထွက်မည်)'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      SseNotificationService.stopListening();
+    });
+
+    testWidgets('Tapping curriculum period in week calendar opens syllabus bottom sheet', (WidgetTester tester) async {
+      final studentJwt = JwtDecoder.generateMockToken(
+        role: 'student',
+        email: 'student.alice@edu.local',
+        userId: 'student-id-01',
+      );
+
+      SharedPreferences.setMockInitialValues({
+        'auth_token': studentJwt,
+        'auth_user': json.encode({
+          'id': 'student-id-01',
+          'email': 'student.alice@edu.local',
+          'full_name': 'Alice Walker',
+          'role': 'student',
+          'grade_level': 'Grade 8',
+          'date_of_birth': DateTime(DateTime.now().year - 14, 1, 1).toIso8601String(),
+        }),
+      });
+      StorageService.resetForTesting();
+
+      await tester.pumpWidget(const EduMobileApp());
+      await tester.pumpAndSettle();
+
+      // Select Monday in the swipable week days bar
+      final monFinder = find.text('MON');
+      expect(monFinder, findsOneWidget);
+      await tester.tap(monFinder);
+      await tester.pumpAndSettle();
+
+      // Verify Monday shows single subject for 09:00 AM (Mathematics by Daw May Thu)
+      final mathFinder = find.text('Mathematics').first;
+      await tester.tap(mathFinder);
+      await tester.pumpAndSettle();
+
+      // Verify bottom sheet appears with syllabus details and learning objectives
+      expect(find.text('သင်ရိုးမာတိကာ အကြောင်းအရာ'), findsOneWidget);
+      expect(find.text('Daw May Thu'), findsOneWidget);
+      expect(find.text('သင်ခန်းစာ မှတ်စုများ (PDF)'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       SseNotificationService.stopListening();
@@ -262,9 +322,11 @@ void main() {
       await tester.pumpWidget(const EduMobileApp(initialRoute: AppRoutes.students));
       await tester.pumpAndSettle();
 
-      expect(find.text('STUDENT'), findsOneWidget);
-      expect(find.text('ID Card'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsOneWidget);
+      expect(find.text('အချိန်ဇယား'), findsOneWidget);
+      expect(find.text('ကတ်ပြား'), findsOneWidget);
+      expect(find.text('သတင်းလွှာ'), findsOneWidget);
+      expect(find.text('ဆက်တင်'), findsOneWidget);
+      expect(find.text('Whole-Child'), findsNothing);
 
       await tester.pumpWidget(const SizedBox());
       SseNotificationService.stopListening();

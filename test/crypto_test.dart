@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:crypto/crypto.dart';
 import 'package:ed25519_edwards/ed25519_edwards.dart' as ed;
+import 'package:edu_mobile/models/verifiable_credential.dart';
 
 void main() {
   test('Cross-platform Ed25519 signature test with Go backend claims', () {
@@ -36,5 +37,66 @@ void main() {
 
     final isValid = ed.verify(publicKey, Uint8List.fromList(hash.bytes), Uint8List.fromList(sigBytes));
     expect(isValid, isTrue);
+  });
+
+  test('W3C VC 2.0 JSON parsing with credentialSchema and credentialStatus', () {
+    final rawJson = {
+      "@context": [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://schema.edu.gov.mm/credentials/v2"
+      ],
+      "id": "urn:uuid:e8a2ec6a-b358-451f-aec6-35e677e71693",
+      "type": ["VerifiableCredential", "StudentIdentityCredential"],
+      "issuer": "did:edu:school:MMR013001001-PV01",
+      "validFrom": "2026-09-28T14:33:20Z",
+      "validUntil": "2027-05-31T23:59:59Z",
+      "credentialSubject": {
+        "id": "did:edu:mm:013:MMR013001001-PV01-2026-STU5779",
+        "academic_year": "2026-2027",
+        "region": "Yangon Region",
+        "school_code": "MMR013001001-PV01",
+        "school_name": "Yangon Academy High School",
+        "student_id": "e8a2ec6a-b358-451f-aec6-35e677e71693",
+        "student_roll_number": "ROLL-5779",
+        "township": "Dagon"
+      },
+      "credentialSchema": {
+        "id": "https://schema.edu.gov.mm/credentials/StudentIdentity.json",
+        "type": "JsonSchema"
+      },
+      "credentialStatus": {
+        "id": "https://registry.edu.gov.mm/status/1#42",
+        "type": "BitstringStatusListEntry",
+        "statusPurpose": "revocation",
+        "statusListIndex": "42",
+        "statusListCredential": "https://registry.edu.gov.mm/status/1"
+      },
+      "proof": {
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "created": "2026-09-28T14:33:20Z",
+        "proofPurpose": "assertionMethod",
+        "verificationMethod": "did:edu:school:MMR013001001-PV01#key-1",
+        "proofValue": "a4d382f..."
+      }
+    };
+
+    final vc = VerifiableCredential.fromJson(rawJson);
+    expect(vc.id, equals("urn:uuid:e8a2ec6a-b358-451f-aec6-35e677e71693"));
+    expect(vc.credentialSchema, isNotNull);
+    expect(vc.credentialSchema?.id, equals("https://schema.edu.gov.mm/credentials/StudentIdentity.json"));
+    expect(vc.credentialSchema?.type, equals("JsonSchema"));
+    expect(vc.credentialStatus, isNotNull);
+    expect(vc.credentialStatus?.type, equals("BitstringStatusListEntry"));
+    expect(vc.credentialStatus?.statusPurpose, equals("revocation"));
+    expect(vc.credentialStatus?.statusListIndex, equals("42"));
+    expect(vc.credentialStatus?.statusListCredential, equals("https://registry.edu.gov.mm/status/1"));
+    expect(vc.credentialSubject.publicKey, isNull);
+    expect(vc.credentialSubject.id, equals("did:edu:mm:013:MMR013001001-PV01-2026-STU5779"));
+
+    final serialized = vc.toJson();
+    expect(serialized['credentialSchema'], isNotNull);
+    expect(serialized['credentialStatus'], isNotNull);
+    expect(serialized['credentialSubject']['public_key'], isNull);
   });
 }

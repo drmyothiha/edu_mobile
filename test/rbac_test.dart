@@ -145,10 +145,11 @@ void main() {
       await tester.pumpWidget(const EduMobileApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('Student ID Wallet'), findsOneWidget);
-      expect(find.text('ID Card'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsOneWidget);
-      expect(find.text('Notices'), findsOneWidget);
+      expect(find.text('အချိန်ဇယား'), findsOneWidget);
+      expect(find.text('ကတ်ပြား'), findsOneWidget);
+      expect(find.text('သတင်းလွှာ'), findsOneWidget);
+      expect(find.text('ဆက်တင်'), findsOneWidget);
+      expect(find.text('Whole-Child'), findsNothing);
 
       await tester.pumpWidget(const SizedBox());
       SseNotificationService.stopListening();

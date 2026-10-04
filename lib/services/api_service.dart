@@ -262,5 +262,73 @@ class ApiService {
       }),
     );
   }
+
+  /// Confirm pairing an unprovisioned Gate Kiosk PWA to this school
+  static Future<Map<String, dynamic>> confirmGatePairing(String pairingId, {String? gateName}) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final uri = Uri.parse('$baseUrl/api/v1/gate/pair/confirm');
+
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: json.encode({
+        'pairing_id': pairingId,
+        'gate_name': gateName ?? 'ဂိတ်-၀၁ (အဓိက အဝင်ဝ) • Gate-01',
+      }),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      String errMsg = 'Pairing failed (${response.statusCode})';
+      try {
+        final err = json.decode(response.body);
+        if (err['error'] != null) errMsg = err['error'];
+      } catch (_) {}
+      throw Exception(errMsg);
+    }
+  }
+
+  /// Fetch weekly class curriculum timetable from server
+  static Future<Map<String, dynamic>> fetchStudentTimetable({String? studentId, String? classId}) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+
+    Uri uri;
+    if (classId != null && classId.isNotEmpty) {
+      uri = Uri.parse('$baseUrl/api/v1/classes/$classId/timetable');
+    } else if (studentId != null && studentId.isNotEmpty) {
+      uri = Uri.parse('$baseUrl/api/v1/students/$studentId/timetable');
+    } else {
+      uri = Uri.parse('$baseUrl/api/v1/students/me/timetable');
+    }
+
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      String errMsg = 'Failed to fetch timetable (${response.statusCode})';
+      try {
+        final err = json.decode(response.body);
+        if (err['error'] != null) errMsg = err['error'];
+      } catch (_) {}
+      throw Exception(errMsg);
+    }
+  }
 }
+
 

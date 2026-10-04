@@ -2,6 +2,7 @@ enum AppUserRole {
   teacher,
   guardian,
   student,
+  admin,
 }
 
 extension AppUserRoleExtension on AppUserRole {
@@ -13,6 +14,8 @@ extension AppUserRoleExtension on AppUserRole {
         return 'guardian';
       case AppUserRole.student:
         return 'student';
+      case AppUserRole.admin:
+        return 'admin';
     }
   }
 
@@ -24,6 +27,8 @@ extension AppUserRoleExtension on AppUserRole {
         return 'Guardian';
       case AppUserRole.student:
         return 'Student';
+      case AppUserRole.admin:
+        return 'School Admin';
     }
   }
 
@@ -35,11 +40,14 @@ extension AppUserRoleExtension on AppUserRole {
         return 'မိဘ / အုပ်ထိန်းသူ';
       case AppUserRole.student:
         return 'ကျောင်းသား/သူ';
+      case AppUserRole.admin:
+        return 'ကျောင်းအုပ် / စီမံခန့်ခွဲသူ';
     }
   }
 
   static AppUserRole fromString(String? role) {
     final clean = (role ?? '').trim().toLowerCase();
+    if (clean == 'admin' || clean == 'school_admin' || clean == 'sysadmin') return AppUserRole.admin;
     if (clean == 'teacher') return AppUserRole.teacher;
     if (clean == 'guardian' || clean == 'parent') return AppUserRole.guardian;
     if (clean == 'student') return AppUserRole.student;
