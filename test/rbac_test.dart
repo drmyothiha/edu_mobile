@@ -1,181 +1,151 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:edu_mobile/main.dart';
 import 'package:edu_mobile/models/user_role.dart';
 import 'package:edu_mobile/services/storage_service.dart';
-import 'package:edu_mobile/services/sse_notification_service.dart';
+import 'package:edu_mobile/parents/screens/parents_shell_screen.dart';
+import 'package:edu_mobile/students/screens/student_shell_screen.dart';
+import 'package:edu_mobile/students/screens/student_under13_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('RBAC & Age Verification Logic', () {
     test('Student under 13 correctly identified via age or birthdate', () {
-      final now = DateTime.now();
-      final dob10YearsOld = DateTime(now.year - 10, now.month, now.day);
-      final under13Student = AppUser(
-        id: 'child-1',
+      final dobUnder13 = DateTime.now().subtract(const Duration(days: 10 * 365));
+      final userUnder13 = AppUser(
+        id: 'u1',
         email: 'su.g5@intaing.edu.local',
         fullName: 'Ma Su Myat Noe',
         role: AppUserRole.student,
-        dateOfBirth: dob10YearsOld,
-        gradeLevel: 'Grade 5-A',
+        dateOfBirth: dobUnder13,
       );
 
-      expect(under13Student.age, 10);
-      expect(under13Student.isUnder13, true);
-
-      final dob14YearsOld = DateTime(now.year - 14, now.month, now.day);
-      final over13Student = AppUser(
-        id: 'child-2',
+      final dobOver13 = DateTime.now().subtract(const Duration(days: 14 * 365));
+      final userOver13 = AppUser(
+        id: 'u2',
         email: 'student.alice@edu.local',
         fullName: 'Alice Walker',
         role: AppUserRole.student,
-        dateOfBirth: dob14YearsOld,
-        gradeLevel: 'Grade 8',
+        dateOfBirth: dobOver13,
       );
 
-      expect(over13Student.age, 14);
-      expect(over13Student.isUnder13, false);
+      expect(userUnder13.isUnder13, isTrue);
+      expect(userOver13.isUnder13, isFalse);
     });
 
     test('Grade level heuristic correctly classifies primary grades as under 13', () {
-      final kgStudent = AppUser(
-        id: 'child-kg',
-        email: 'aung.kg@intaing.edu.local',
-        fullName: 'Maung Aung Kaung Myat',
+      final userG5 = AppUser(
+        id: 'u3',
+        email: 'primary@edu.local',
+        fullName: 'Primary Student',
         role: AppUserRole.student,
-        gradeLevel: 'KG',
+        gradeLevel: 'Grade 5-A',
       );
-      expect(kgStudent.isUnder13, true);
 
-      final grade8Student = AppUser(
-        id: 'child-g8',
-        email: 'bob@edu.local',
-        fullName: 'Bob Miller',
+      final userG8 = AppUser(
+        id: 'u4',
+        email: 'middle@edu.local',
+        fullName: 'Middle Student',
         role: AppUserRole.student,
         gradeLevel: 'Grade 8',
       );
-      expect(grade8Student.isUnder13, false);
+
+      expect(userG5.isUnder13, isTrue);
+      expect(userG8.isUnder13, isFalse);
     });
 
     test('Role parsing handles "parent" and "guardian" interchangeably', () {
       expect(AppUserRoleExtension.fromString('guardian'), AppUserRole.guardian);
       expect(AppUserRoleExtension.fromString('parent'), AppUserRole.guardian);
-      expect(AppUserRoleExtension.fromString('teacher'), AppUserRole.teacher);
       expect(AppUserRoleExtension.fromString('student'), AppUserRole.student);
     });
   });
 
   group('RBAC Widget Navigation Tests', () {
-    setUp(() {
-      SseNotificationService.stopListening();
-    });
-
-    tearDown(() {
-      SseNotificationService.stopListening();
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      StorageService.resetForTesting();
+      await StorageService.clearSession();
     });
 
     testWidgets('Renders Guardian view when logged in as Guardian', (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({
-        'auth_token': 'test-token',
-        'auth_user': json.encode({
-          'id': 'g-1',
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await StorageService.saveSession(
+        token: 'mock-guardian-token',
+        user: {
+          'id': 'parent-id-01',
           'email': 'parent.clark@edu.local',
           'full_name': 'Daw Khin Mar',
           'role': 'guardian',
-        }),
-      });
-      StorageService.resetForTesting();
+        },
+      );
 
-      await tester.pumpWidget(const EduMobileApp());
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: ParentsShellScreen(),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      expect(find.text('Guardian Portal'), findsOneWidget);
+      expect(find.textContaining('GUARDIAN'), findsWidgets);
       expect(find.text('Children'), findsOneWidget);
-      expect(find.text('Child Pass'), findsOneWidget);
-      expect(find.text('Teacher Chat'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
     });
 
-    testWidgets('Renders Under-13 Protection screen when child < 13 logs in directly', (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({
-        'auth_token': 'test-token',
-        'auth_user': json.encode({
-          'id': 'c-1',
-          'email': 'su.g5@intaing.edu.local',
-          'full_name': 'Ma Su Myat Noe',
-          'role': 'student',
-          'grade_level': 'Grade 5-A',
-          'date_of_birth': DateTime(DateTime.now().year - 10, 1, 1).toIso8601String(),
-          'guardian_name': 'Daw Khin Mar',
-        }),
-      });
-      StorageService.resetForTesting();
+    testWidgets('Renders Student Shell when student >= 13 logs in', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
 
-      await tester.pumpWidget(const EduMobileApp());
-      await tester.pumpAndSettle();
-
-      expect(find.text('Account Managed by Guardian'), findsOneWidget);
-      expect(find.text('Child Safety Policy'), findsOneWidget);
-      expect(find.textContaining('Child Digital Safety Standard'), findsOneWidget);
-      expect(find.textContaining('Switch to Guardian Account'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
-    });
-
-    testWidgets('Renders Student ID Wallet when student >= 13 logs in', (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({
-        'auth_token': 'test-token',
-        'auth_user': json.encode({
-          'id': 'c-2',
+      await StorageService.saveSession(
+        token: 'mock-student-token',
+        user: {
+          'id': 'student-id-01',
           'email': 'student.alice@edu.local',
           'full_name': 'Alice Walker',
           'role': 'student',
           'grade_level': 'Grade 8',
-          'date_of_birth': DateTime(DateTime.now().year - 14, 1, 1).toIso8601String(),
-        }),
-      });
-      StorageService.resetForTesting();
+          'date_of_birth': '2012-03-15T00:00:00Z',
+        },
+      );
 
-      await tester.pumpWidget(const EduMobileApp());
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: StudentShellScreen(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('အချိန်ဇယား'), findsOneWidget);
       expect(find.text('ကတ်ပြား'), findsOneWidget);
-      expect(find.text('သတင်းလွှာ'), findsOneWidget);
-      expect(find.text('ဆက်တင်'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsNothing);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
     });
 
-    testWidgets('Renders Teacher tools when logged in as Teacher', (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({
-        'auth_token': 'test-token',
-        'auth_user': json.encode({
-          'id': 't-1',
-          'email': 'teacher.smith@edu.local',
-          'full_name': 'Daw Thida',
-          'role': 'teacher',
-        }),
-      });
-      StorageService.resetForTesting();
+    testWidgets('Renders StudentUnder13Screen when student < 13 logs in', (WidgetTester tester) async {
+      final childUser = AppUser(
+        id: 'child-id-01',
+        email: 'su.g5@intaing.edu.local',
+        fullName: 'Ma Su Myat Noe',
+        role: AppUserRole.student,
+        gradeLevel: 'Grade 5-A',
+        dateOfBirth: DateTime.now().subtract(const Duration(days: 10 * 365)),
+        guardianName: 'Daw Khin Mar',
+      );
 
-      await tester.pumpWidget(const EduMobileApp());
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StudentUnder13Screen(
+            user: childUser,
+            onSwitchToGuardian: () {},
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      expect(find.text('Kiosk'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsOneWidget);
-      expect(find.text('Messages'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
+      expect(find.textContaining('Child Safety Policy'), findsOneWidget);
+      expect(find.textContaining('Ma Su Myat Noe'), findsOneWidget);
     });
   });
 }

@@ -58,14 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _selectedRole = role;
       _error = null;
       switch (role) {
-        case AppUserRole.admin:
-          _emailController.text = 'admin@mmr013035-behs01.edu.local';
-          _passwordController.text = 'mth';
-          break;
-        case AppUserRole.teacher:
-          _emailController.text = '0911111';
-          _passwordController.text = 'mth';
-          break;
         case AppUserRole.guardian:
           _emailController.text = '0922222';
           _passwordController.text = 'mth';
@@ -106,24 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
         user = data['user'] as Map<String, dynamic>;
       } catch (backendError) {
         // Fallback for offline demo accounts
-        if (email.contains('admin') || email == '0944444') {
-          user = {
-            'id': 'd0000000-0000-0000-0000-000000000099',
-            'email': email,
-            'full_name': 'U Aung Myo (ဦးအောင်မျိုး - ကျောင်းအုပ်ကြီး)',
-            'role': 'admin',
-            'school_name': 'BEHS Intaing (အထက အင်းတိုင်)',
-            'school_id': '0ac3f6b3-ce6d-4d15-bb4c-9b868f41aeb4',
-          };
-        } else if (email.contains('teacher') || email == '0911111') {
-          user = {
-            'id': 'd0000000-0000-0000-0000-000000000001',
-            'email': email,
-            'full_name': 'Daw Thida (ဒေါ်သီတာ - ဆရာမ)',
-            'role': 'teacher',
-            'school_name': 'BEHS Intaing (အင်းတိုင် အထက)',
-          };
-        } else if (email.contains('parent') ||
+        if (email.contains('parent') ||
             email.contains('guardian') ||
             email == '0922222') {
           user = {
@@ -236,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Select your role to access role-specific features (Teacher, Guardian, or Student >=13).',
+              'Select your role to access role-specific features (Guardian or Student >=13).',
               style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
             ),
             const SizedBox(height: 12),
@@ -302,26 +277,12 @@ class _LoginScreenState extends State<LoginScreen> {
             Row(
               children: [
                 _buildRoleButton(
-                  role: AppUserRole.admin,
-                  icon: Icons.admin_panel_settings,
-                  label: 'Admin',
-                  subtitle: 'ကျောင်းအုပ်',
-                ),
-                const SizedBox(width: 6),
-                _buildRoleButton(
-                  role: AppUserRole.teacher,
-                  icon: Icons.school,
-                  label: 'Teacher',
-                  subtitle: 'ဆရာ/ဆရာမ',
-                ),
-                const SizedBox(width: 6),
-                _buildRoleButton(
                   role: AppUserRole.guardian,
                   icon: Icons.family_restroom,
                   label: 'Guardian',
                   subtitle: 'မိဘ/အုပ်ထိန်း',
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 12),
                 _buildRoleButton(
                   role: AppUserRole.student,
                   icon: Icons.person,
@@ -533,26 +494,6 @@ class _LoginScreenState extends State<LoginScreen> {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
-                ActionChip(
-                  avatar: const Icon(
-                    Icons.admin_panel_settings,
-                    size: 16,
-                    color: AppTheme.primary,
-                  ),
-                  label: const Text(
-                    'School Admin',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: () => _fillDemoCredentials(AppUserRole.admin),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.school, size: 16),
-                  label: const Text(
-                    'Teacher (0911111)',
-                    style: TextStyle(fontSize: 11),
-                  ),
-                  onPressed: () => _fillDemoCredentials(AppUserRole.teacher),
-                ),
                 ActionChip(
                   avatar: const Icon(Icons.family_restroom, size: 16),
                   label: const Text(

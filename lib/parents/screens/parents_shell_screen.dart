@@ -197,7 +197,7 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
       _ParentNavItem(
         icon: Icons.chat_bubble_outline,
         activeIcon: Icons.chat_bubble,
-        label: 'Teacher Chat',
+        label: 'Chat',
         subtitle: 'Alerts',
       ),
     ];

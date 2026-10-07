@@ -3,9 +3,6 @@ import '../models/user_role.dart';
 import '../services/storage_service.dart';
 import '../services/jwt_decoder.dart';
 import '../theme/app_theme.dart';
-import '../admin/screens/admin_shell_screen.dart';
-import '../teacher/routes/teacher_routes.dart';
-import '../teacher/screens/teacher_shell_screen.dart';
 import '../parents/routes/parent_routes.dart';
 import '../parents/screens/parents_shell_screen.dart';
 import '../students/routes/student_routes.dart';
@@ -14,8 +11,6 @@ import '../students/screens/student_under13_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/server_settings_screen.dart';
 import '../screens/student_wallet_screen.dart';
-import '../screens/gate_verifier_screen.dart';
-import '../screens/classroom_sync_screen.dart';
 import '../screens/notifications_screen.dart';
 import 'app_routes.dart';
 
@@ -25,25 +20,19 @@ class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     final name = settings.name ?? AppRoutes.initial;
 
-    // 1. Teacher namespace route delegation (/teacher/...)
-    if (name.startsWith(TeacherRoutes.prefix)) {
-      final route = TeacherRoutes.generateRoute(settings);
-      if (route != null) return route;
-    }
-
-    // 2. Parents namespace route delegation (/parents/...)
+    // 1. Parents namespace route delegation (/parents/...)
     if (name.startsWith(ParentRoutes.prefix)) {
       final route = ParentRoutes.generateRoute(settings);
       if (route != null) return route;
     }
 
-    // 3. Students namespace route delegation (/students/...)
+    // 2. Students namespace route delegation (/students/...)
     if (name.startsWith(StudentRoutes.prefix)) {
       final route = StudentRoutes.generateRoute(settings);
       if (route != null) return route;
     }
 
-    // 4. Standalone Login route
+    // 3. Standalone Login route
     if (name == AppRoutes.login) {
       return MaterialPageRoute(
         settings: settings,
@@ -51,7 +40,7 @@ class AppRouter {
       );
     }
 
-    // 4b. Server Settings route
+    // 4. Server Settings route
     if (name == AppRoutes.settings) {
       return MaterialPageRoute(
         settings: settings,
@@ -59,15 +48,7 @@ class AppRouter {
       );
     }
 
-    // 5. Admin Portal route
-    if (name == AppRoutes.admin) {
-      return MaterialPageRoute(
-        settings: settings,
-        builder: (_) => AdminShellScreen(onSwitchRole: () {}),
-      );
-    }
-
-    // 6. Default root dispatcher: resolves JWT role and dispatches to appropriate role UI
+    // 5. Default root dispatcher: resolves JWT role and dispatches to appropriate role UI
     return MaterialPageRoute(
       settings: settings,
       builder: (_) => const RoleDispatcherScreen(),
@@ -145,30 +126,6 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
                   style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                 ),
                 const SizedBox(height: 16),
-                _buildRoleDialogTile(
-                  icon: Icons.admin_panel_settings,
-                  color: const Color(0xFF312E81),
-                  title: 'School Admin (ကျောင်းအုပ်ကြီး)',
-                  subtitle: 'Kiosk provisioning • MMR013035-BEHS01 • School oversight',
-                  onTap: () => _switchToRole(
-                    role: AppUserRole.admin,
-                    fullName: 'U Aung Myo (ဦးအောင်မျိုး)',
-                    email: 'admin.ygn@edu.local',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildRoleDialogTile(
-                  icon: Icons.school,
-                  color: Colors.teal,
-                  title: 'Teacher (ဆရာ/ဆရာမ)',
-                  subtitle: 'Gate kiosk verifier • Grade 5-A sync • Parent notices',
-                  onTap: () => _switchToRole(
-                    role: AppUserRole.teacher,
-                    fullName: 'Daw Thida (ဒေါ်သီတာ)',
-                    email: 'teacher.smith@edu.local',
-                  ),
-                ),
-                const SizedBox(height: 8),
                 _buildRoleDialogTile(
                   icon: Icons.family_restroom,
                   color: AppTheme.primary,
@@ -348,10 +305,6 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
 
     // 2. Route directly to Role-specific UI
     switch (effectiveRole) {
-      case AppUserRole.admin:
-        return AdminShellScreen(onSwitchRole: _showRoleSwitchDialog);
-      case AppUserRole.teacher:
-        return TeacherShellScreen(onSwitchRole: _showRoleSwitchDialog);
       case AppUserRole.guardian:
         return ParentsShellScreen(onSwitchRole: _showRoleSwitchDialog);
       case AppUserRole.student:
@@ -365,9 +318,7 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
   Widget _buildUnauthenticatedMultiView() {
     final navItems = [
       _MultiNavItem(Icons.wallet_outlined, Icons.wallet, 'ID Card', 'W3C VC'),
-      _MultiNavItem(Icons.qr_code_scanner_outlined, Icons.qr_code_scanner, 'Kiosk', 'Auto Scan'),
-      _MultiNavItem(Icons.hub_outlined, Icons.hub, 'Whole-Child', 'Grade 5-A'),
-      _MultiNavItem(Icons.chat_bubble_outline, Icons.chat_bubble, 'Parent Chat', 'Alerts & Chat'),
+      _MultiNavItem(Icons.notifications_outlined, Icons.notifications, 'Notices', 'Alerts & Chat'),
     ];
 
     return Scaffold(
@@ -375,8 +326,6 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
         index: _unauthTabIndex,
         children: [
           StudentWalletScreen(onSwitchMode: _showRoleSwitchDialog),
-          GateVerifierScreen(onSwitchMode: _showRoleSwitchDialog),
-          ClassroomSyncScreen(onSwitchMode: _showRoleSwitchDialog),
           NotificationsScreen(onSwitchMode: _showRoleSwitchDialog),
         ],
       ),
