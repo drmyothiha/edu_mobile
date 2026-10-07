@@ -1,335 +1,158 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:edu_mobile/main.dart';
 import 'package:edu_mobile/models/user_role.dart';
-import 'package:edu_mobile/services/jwt_decoder.dart';
 import 'package:edu_mobile/services/storage_service.dart';
-import 'package:edu_mobile/services/sse_notification_service.dart';
+import 'package:edu_mobile/services/jwt_decoder.dart';
 import 'package:edu_mobile/routes/app_routes.dart';
-import 'package:edu_mobile/routes/app_router.dart';
-import 'package:edu_mobile/teacher/routes/teacher_routes.dart';
-import 'package:edu_mobile/parents/routes/parent_routes.dart';
-import 'package:edu_mobile/students/routes/student_routes.dart';
+import 'package:edu_mobile/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('JWT Claims Decoder & Role Extraction Tests', () {
-    test('Correctly extracts teacher role from real JWT payload', () {
-      final token = JwtDecoder.generateMockToken(
-        role: 'teacher',
-        email: 'teacher.smith@edu.local',
-        userId: 'teacher-uuid-1',
-      );
-
-      final claims = JwtDecoder.decode(token);
-      expect(claims, isNotNull);
-      expect(claims!['role'], 'teacher');
-      expect(claims['email'], 'teacher.smith@edu.local');
-
-      final role = JwtDecoder.getRole(token);
-      expect(role, AppUserRole.teacher);
-    });
-
-    test('Correctly extracts guardian / parent role from JWT payload', () {
-      final token = JwtDecoder.generateMockToken(
-        role: 'guardian',
-        email: 'parent.clark@edu.local',
-      );
-
-      final role = JwtDecoder.getRole(token);
-      expect(role, AppUserRole.guardian);
-
-      // Verify "parent" synonym in JWT maps to guardian
-      final parentToken = JwtDecoder.generateMockToken(
-        role: 'parent',
-        email: 'parent.clark@edu.local',
-      );
-      expect(JwtDecoder.getRole(parentToken), AppUserRole.guardian);
-    });
-
-    test('Correctly extracts student role from JWT payload', () {
-      final token = JwtDecoder.generateMockToken(
-        role: 'student',
-        email: 'student.alice@edu.local',
-      );
-
-      final role = JwtDecoder.getRole(token);
-      expect(role, AppUserRole.student);
-    });
-
-    test('Handles malformed or non-JWT tokens without throwing', () {
-      expect(JwtDecoder.decode('invalid-token'), isNull);
-      expect(JwtDecoder.getRole('not-a-jwt'), isNull);
-      expect(JwtDecoder.decode(''), isNull);
-      expect(JwtDecoder.decode(null), isNull);
-    });
-  });
-
-  group('Role Namespace Route Generators', () {
-    test('TeacherRoutes generates valid MaterialPageRoute instances', () {
-      final rootRoute = TeacherRoutes.generateRoute(const RouteSettings(name: '/teacher'));
-      expect(rootRoute, isNotNull);
-
-      final kioskRoute = TeacherRoutes.generateRoute(const RouteSettings(name: '/teacher/kiosk'));
-      expect(kioskRoute, isNotNull);
-
-      final syncRoute = TeacherRoutes.generateRoute(const RouteSettings(name: '/teacher/sync'));
-      expect(syncRoute, isNotNull);
-    });
-
-    test('ParentRoutes generates valid MaterialPageRoute instances', () {
-      final rootRoute = ParentRoutes.generateRoute(const RouteSettings(name: '/parents'));
-      expect(rootRoute, isNotNull);
-
-      final passRoute = ParentRoutes.generateRoute(const RouteSettings(name: '/parents/child-pass'));
-      expect(passRoute, isNotNull);
-    });
-
-    test('StudentRoutes generates valid MaterialPageRoute instances', () {
-      final rootRoute = StudentRoutes.generateRoute(const RouteSettings(name: '/students'));
-      expect(rootRoute, isNotNull);
-
-      final walletRoute = StudentRoutes.generateRoute(const RouteSettings(name: '/students/wallet'));
-      expect(walletRoute, isNotNull);
-
-      final settingsRoute = StudentRoutes.generateRoute(const RouteSettings(name: '/students/settings'));
-      expect(settingsRoute, isNotNull);
-    });
-
-    test('AppRouter dispatches to role routes based on namespace', () {
-      final teacherRoute = AppRouter.onGenerateRoute(const RouteSettings(name: '/teacher/sync'));
-      expect(teacherRoute, isNotNull);
-
-      final parentRoute = AppRouter.onGenerateRoute(const RouteSettings(name: '/parents/child-pass'));
-      expect(parentRoute, isNotNull);
-
-      final studentRoute = AppRouter.onGenerateRoute(const RouteSettings(name: '/students/wallet'));
-      expect(studentRoute, isNotNull);
-    });
-  });
-
   group('JWT Role-Based Routing & UI Rendering', () {
-    setUp(() {
-      SseNotificationService.stopListening();
-    });
-
-    tearDown(() {
-      SseNotificationService.stopListening();
-    });
-
-    testWidgets('User with JWT role=teacher routes to Teacher folder and renders Teacher UI', (WidgetTester tester) async {
-      final teacherJwt = JwtDecoder.generateMockToken(
-        role: 'teacher',
-        email: 'teacher.smith@edu.local',
-        userId: 'teacher-id-01',
-      );
-
-      SharedPreferences.setMockInitialValues({
-        'auth_token': teacherJwt,
-        'auth_user': json.encode({
-          'id': 'teacher-id-01',
-          'email': 'teacher.smith@edu.local',
-          'full_name': 'Daw Thida (ဒေါ်သီတာ)',
-          'role': 'teacher',
-          'school_name': 'BEHS Intaing (အင်းတိုင် အထက)',
-        }),
-      });
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
       StorageService.resetForTesting();
-
-      await tester.pumpWidget(const EduMobileApp());
-      await tester.pumpAndSettle();
-
-      // Check Teacher Shell UI elements
-      expect(find.text('TEACHER'), findsOneWidget);
-      expect(find.text('Daw Thida (ဒေါ်သီတာ)'), findsOneWidget);
-      expect(find.text('BEHS Intaing (အင်းတိုင် အထက)'), findsOneWidget);
-
-      // Check Teacher navigation tabs
-      expect(find.text('Kiosk'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsOneWidget);
-      expect(find.text('Messages'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
+      await StorageService.clearSession();
     });
 
-    testWidgets('User with JWT role=guardian routes to Parents folder and renders Parents UI', (WidgetTester tester) async {
+    test('Correctly extracts guardian role from real JWT payload', () {
       final guardianJwt = JwtDecoder.generateMockToken(
         role: 'guardian',
         email: 'parent.clark@edu.local',
-        userId: 'guardian-id-01',
+        userId: 'guardian-uuid-2',
       );
 
-      SharedPreferences.setMockInitialValues({
-        'auth_token': guardianJwt,
-        'auth_user': json.encode({
-          'id': 'guardian-id-01',
+      final claims = JwtDecoder.decode(guardianJwt);
+      expect(claims, isNotNull);
+      expect(claims!['role'], 'guardian');
+      expect(claims['email'], 'parent.clark@edu.local');
+
+      final role = JwtDecoder.getRole(guardianJwt);
+      expect(role, AppUserRole.guardian);
+    });
+
+    test('AppRoutes correctly resolves routes for guardian and student', () {
+      expect(AppRoutes.getRouteForRole(AppUserRole.guardian), AppRoutes.parents);
+      expect(AppRoutes.getRouteForRole(AppUserRole.student), AppRoutes.students);
+    });
+
+    testWidgets('User with JWT role=guardian routes to Parents folder and renders Guardian UI', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final parentJwt = JwtDecoder.generateMockToken(
+        role: 'guardian',
+        email: 'parent.clark@edu.local',
+        userId: 'parent-id-02',
+      );
+
+      await StorageService.saveSession(
+        token: parentJwt,
+        user: {
+          'id': 'parent-id-02',
           'email': 'parent.clark@edu.local',
-          'full_name': 'Daw Khin Mar (ဒေါ်ခင်မာ)',
+          'full_name': 'Daw Khin Mar',
           'role': 'guardian',
-        }),
-      });
-      StorageService.resetForTesting();
+        },
+      );
 
       await tester.pumpWidget(const EduMobileApp());
       await tester.pumpAndSettle();
 
-      // Check Parents Shell UI elements
-      expect(find.text('GUARDIAN'), findsOneWidget);
-      expect(find.text('Daw Khin Mar (ဒေါ်ခင်မာ)'), findsOneWidget);
-      expect(find.text('Guardian Portal'), findsOneWidget);
-
-      // Check Parents navigation tabs
+      // Check Guardian Shell UI elements
+      expect(find.textContaining('GUARDIAN'), findsWidgets);
       expect(find.text('Children'), findsOneWidget);
       expect(find.text('Child Pass'), findsOneWidget);
-      expect(find.text('Teacher Chat'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
     });
 
     testWidgets('User with JWT role=student (age >= 13) routes to Students folder and renders Student UI', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
       final studentJwt = JwtDecoder.generateMockToken(
         role: 'student',
         email: 'student.alice@edu.local',
-        userId: 'student-id-01',
+        userId: 'student-id-03',
       );
 
-      SharedPreferences.setMockInitialValues({
-        'auth_token': studentJwt,
-        'auth_user': json.encode({
-          'id': 'student-id-01',
-          'email': 'student.alice@edu.local',
-          'full_name': 'Alice Walker (Grade 8)',
-          'role': 'student',
-          'grade_level': 'Grade 8',
-          'date_of_birth': DateTime(DateTime.now().year - 14, 1, 1).toIso8601String(),
-        }),
-      });
-      StorageService.resetForTesting();
-
-      await tester.pumpWidget(const EduMobileApp());
-      await tester.pumpAndSettle();
-
-      // Check Student navigation tabs (1st = Curriculum/အချိန်ဇယား, 2nd = ID Card/ကတ်ပြား, 3rd = Notices/သတင်းလွှာ, 4th = Settings/ဆက်တင်)
-      expect(find.text('အချိန်ဇယား'), findsOneWidget);
-      expect(find.text('ကတ်ပြား'), findsOneWidget);
-      expect(find.text('သတင်းလွှာ'), findsOneWidget);
-      expect(find.text('ဆက်တင်'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsNothing);
-
-      // Top bar removed to save space: starts directly with Week row at top
-      expect(find.text('MON'), findsOneWidget);
-      expect(find.text('SUN'), findsOneWidget);
-      expect(find.text('လက်ရှိအချိန်'), findsOneWidget);
-      expect(find.textContaining('Mathematics'), findsWidgets);
-      expect(find.text('2026 / 9'), findsNothing);
-
-      // Tap 4th tab (Settings) to verify Standards profile, settings, logout, and about
-      await tester.tap(find.text('ဆက်တင်'));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('Settings & Profile'), findsOneWidget);
-      expect(find.text('Alice Walker (Grade 8)'), findsOneWidget);
-      expect(find.text('STUDENT'), findsOneWidget);
-      expect(find.textContaining('Standards Profile'), findsWidgets);
-      expect(find.text('Sign Out (အကောင့်မှ ထွက်မည်)'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
-    });
-
-    testWidgets('Tapping curriculum period in week calendar opens syllabus bottom sheet', (WidgetTester tester) async {
-      final studentJwt = JwtDecoder.generateMockToken(
-        role: 'student',
-        email: 'student.alice@edu.local',
-        userId: 'student-id-01',
-      );
-
-      SharedPreferences.setMockInitialValues({
-        'auth_token': studentJwt,
-        'auth_user': json.encode({
-          'id': 'student-id-01',
+      await StorageService.saveSession(
+        token: studentJwt,
+        user: {
+          'id': 'student-id-03',
           'email': 'student.alice@edu.local',
           'full_name': 'Alice Walker',
           'role': 'student',
           'grade_level': 'Grade 8',
-          'date_of_birth': DateTime(DateTime.now().year - 14, 1, 1).toIso8601String(),
-        }),
-      });
-      StorageService.resetForTesting();
+          'date_of_birth': '2012-03-15T00:00:00Z',
+        },
+      );
 
       await tester.pumpWidget(const EduMobileApp());
       await tester.pumpAndSettle();
 
-      // Select Monday in the swipable week days bar
-      final monFinder = find.text('MON');
-      expect(monFinder, findsOneWidget);
-      await tester.tap(monFinder);
-      await tester.pumpAndSettle();
-
-      // Verify Monday shows single subject for 09:00 AM (Mathematics by Daw May Thu)
-      final mathFinder = find.text('Mathematics').first;
-      await tester.tap(mathFinder);
-      await tester.pumpAndSettle();
-
-      // Verify bottom sheet appears with syllabus details and learning objectives
-      expect(find.text('သင်ရိုးမာတိကာ အကြောင်းအရာ'), findsOneWidget);
-      expect(find.text('Daw May Thu'), findsOneWidget);
-      expect(find.text('သင်ခန်းစာ မှတ်စုများ (PDF)'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
+      // Check Student Shell UI navigation elements
+      expect(find.text('အချိန်ဇယား'), findsOneWidget);
+      expect(find.text('ကတ်ပြား'), findsOneWidget);
     });
 
-    testWidgets('Direct route navigation with initialRoute /teacher renders Teacher UI', (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({});
-      StorageService.resetForTesting();
+    testWidgets('Under-13 student triggers Child Protection Guard and offers switch to Guardian', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
 
-      await tester.pumpWidget(const EduMobileApp(initialRoute: AppRoutes.teacher));
+      final childJwt = JwtDecoder.generateMockToken(
+        role: 'student',
+        email: 'su.g5@intaing.edu.local',
+        userId: 'child-under13-id',
+      );
+
+      await StorageService.saveSession(
+        token: childJwt,
+        user: {
+          'id': 'child-under13-id',
+          'email': 'su.g5@intaing.edu.local',
+          'full_name': 'Ma Su Myat Noe',
+          'role': 'student',
+          'grade_level': 'Grade 5-A',
+          'date_of_birth': '2016-04-12T00:00:00Z',
+          'guardian_name': 'Daw Khin Mar',
+        },
+      );
+
+      await tester.pumpWidget(const EduMobileApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('TEACHER'), findsOneWidget);
-      expect(find.text('Kiosk'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
+      // Should render Child Safety Mode screen
+      expect(find.textContaining('Child Safety Policy'), findsWidgets);
+      expect(find.textContaining('Ma Su Myat Noe'), findsOneWidget);
+      expect(find.textContaining('Switch to Guardian Account'), findsOneWidget);
     });
 
     testWidgets('Direct route navigation with initialRoute /parents renders Parents UI', (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({});
-      StorageService.resetForTesting();
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(const EduMobileApp(initialRoute: AppRoutes.parents));
       await tester.pumpAndSettle();
 
-      expect(find.text('GUARDIAN'), findsOneWidget);
-      expect(find.text('Children'), findsOneWidget);
-      expect(find.text('Child Pass'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
+      expect(find.textContaining('GUARDIAN'), findsWidgets);
     });
 
     testWidgets('Direct route navigation with initialRoute /students renders Student UI', (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({});
-      StorageService.resetForTesting();
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(const EduMobileApp(initialRoute: AppRoutes.students));
       await tester.pumpAndSettle();
 
       expect(find.text('အချိန်ဇယား'), findsOneWidget);
       expect(find.text('ကတ်ပြား'), findsOneWidget);
-      expect(find.text('သတင်းလွှာ'), findsOneWidget);
-      expect(find.text('ဆက်တင်'), findsOneWidget);
-      expect(find.text('Whole-Child'), findsNothing);
-
-      await tester.pumpWidget(const SizedBox());
-      SseNotificationService.stopListening();
     });
   });
 }

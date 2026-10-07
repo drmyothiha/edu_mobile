@@ -172,9 +172,7 @@ class StorageService {
     if (jwtRole != null) return jwtRole;
     final user = await getCurrentUser();
     if (user != null) return user.role;
-    final mode = await getAppMode();
-    if (mode == 'inspector') return AppUserRole.teacher;
-    return AppUserRole.student;
+    return AppUserRole.guardian;
   }
 
   // Guardian Linked Children Store

@@ -1,54 +1,38 @@
 enum AppUserRole {
-  teacher,
   guardian,
   student,
-  admin,
 }
 
 extension AppUserRoleExtension on AppUserRole {
   String get name {
     switch (this) {
-      case AppUserRole.teacher:
-        return 'teacher';
       case AppUserRole.guardian:
         return 'guardian';
       case AppUserRole.student:
         return 'student';
-      case AppUserRole.admin:
-        return 'admin';
     }
   }
 
   String get labelEn {
     switch (this) {
-      case AppUserRole.teacher:
-        return 'Teacher';
       case AppUserRole.guardian:
         return 'Guardian';
       case AppUserRole.student:
         return 'Student';
-      case AppUserRole.admin:
-        return 'School Admin';
     }
   }
 
   String get labelMy {
     switch (this) {
-      case AppUserRole.teacher:
-        return 'ဆရာ/ဆရာမ';
       case AppUserRole.guardian:
         return 'မိဘ / အုပ်ထိန်းသူ';
       case AppUserRole.student:
         return 'ကျောင်းသား/သူ';
-      case AppUserRole.admin:
-        return 'ကျောင်းအုပ် / စီမံခန့်ခွဲသူ';
     }
   }
 
   static AppUserRole fromString(String? role) {
     final clean = (role ?? '').trim().toLowerCase();
-    if (clean == 'admin' || clean == 'school_admin' || clean == 'sysadmin') return AppUserRole.admin;
-    if (clean == 'teacher') return AppUserRole.teacher;
     if (clean == 'guardian' || clean == 'parent') return AppUserRole.guardian;
     if (clean == 'student') return AppUserRole.student;
     // Default fallback to student
