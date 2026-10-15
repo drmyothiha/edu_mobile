@@ -41,7 +41,7 @@ class EduMobileApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Myanmar Edu Mobile',
+      title: 'AugmentEd',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       initialRoute: initialRoute ?? AppRoutes.initial,

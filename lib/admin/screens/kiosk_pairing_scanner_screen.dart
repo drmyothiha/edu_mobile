@@ -4,7 +4,9 @@ import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 
 class KioskPairingScannerScreen extends StatefulWidget {
-  const KioskPairingScannerScreen({super.key});
+  final String? initialPayload;
+
+  const KioskPairingScannerScreen({super.key, this.initialPayload});
 
   @override
   State<KioskPairingScannerScreen> createState() => _KioskPairingScannerScreenState();
@@ -18,6 +20,17 @@ class _KioskPairingScannerScreenState extends State<KioskPairingScannerScreen> {
 
   bool _isProcessing = false;
   bool _torchEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialPayload != null && widget.initialPayload!.trim().isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() => _isProcessing = true);
+        _processPairingPayload(widget.initialPayload!.trim());
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -69,7 +82,7 @@ class _KioskPairingScannerScreenState extends State<KioskPairingScannerScreen> {
   }
 
   void _showSuccessDialog(Map<String, dynamic> data) {
-    final schoolName = data['school_name_my'] ?? data['school_name'] ?? 'အထက အင်းတိုင်';
+    final schoolName = data['school_name_my'] ?? data['school_name'] ?? 'အခြေခံပညာကျောင်း';
     final gateName = data['gate_name'] ?? 'ဂိတ်-၀၁ (အဓိက အဝင်ဝ)';
 
     showModalBottomSheet(
@@ -254,7 +267,7 @@ class _KioskPairingScannerScreenState extends State<KioskPairingScannerScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.indigo.withOpacity(0.3),
+                    color: Colors.indigo.withValues(alpha: 0.3),
                     blurRadius: 15,
                     spreadRadius: 2,
                   ),
@@ -271,7 +284,7 @@ class _KioskPairingScannerScreenState extends State<KioskPairingScannerScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
+                color: Colors.black.withValues(alpha: 0.75),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white24),
               ),
@@ -301,7 +314,7 @@ class _KioskPairingScannerScreenState extends State<KioskPairingScannerScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.8),
+                      color: Colors.black.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -316,7 +329,7 @@ class _KioskPairingScannerScreenState extends State<KioskPairingScannerScreen> {
                 const SizedBox(height: 12),
                 TextButton.icon(
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.15),
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),

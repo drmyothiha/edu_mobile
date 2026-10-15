@@ -18,7 +18,7 @@ class StudentUnder13Screen extends StatelessWidget {
   Widget build(BuildContext context) {
     final age = user.age ?? 10;
     final guardianName = user.guardianName ?? 'Daw Khin Mar (ဒေါ်ခင်မာ)';
-    final schoolName = user.schoolName ?? 'Basic Education High School Intaing (အင်းတိုင် အထက)';
+    final schoolName = user.schoolName ?? 'Basic Education School';
     final gradeLevel = user.gradeLevel ?? 'Grade 5-A';
 
     return Scaffold(

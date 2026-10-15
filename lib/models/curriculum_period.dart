@@ -16,6 +16,8 @@ class CurriculumPeriod {
   final String chapterDescription;
   final String? homework;
   final String shiftSection; // 'full_day', 'morning', 'afternoon'
+  final String? studentId;
+  final String? gradeLevel;
 
   const CurriculumPeriod({
     required this.id,
@@ -32,6 +34,8 @@ class CurriculumPeriod {
     required this.chapterDescription,
     this.homework,
     this.shiftSection = 'full_day',
+    this.studentId,
+    this.gradeLevel,
   });
 
   double get startHourDecimal => startTime.hour + (startTime.minute / 60.0);
@@ -64,6 +68,8 @@ class CurriculumPeriod {
       'chapter_description': chapterDescription,
       'homework': homework,
       'shift_section': shiftSection,
+      'student_id': studentId,
+      'grade_level': gradeLevel,
     };
   }
 
@@ -89,6 +95,46 @@ class CurriculumPeriod {
       chapterDescription: json['chapter_description']?.toString() ?? '',
       homework: json['homework']?.toString(),
       shiftSection: json['shift_section']?.toString() ?? 'full_day',
+      studentId: json['student_id']?.toString(),
+      gradeLevel: json['grade_level']?.toString(),
+    );
+  }
+
+  CurriculumPeriod copyWith({
+    String? id,
+    String? subjectCode,
+    String? subjectName,
+    String? subjectNameMy,
+    String? teacherName,
+    String? room,
+    int? dayOfWeek,
+    TimeOfDay? startTime,
+    TimeOfDay? endTime,
+    Color? color,
+    String? chapterTitle,
+    String? chapterDescription,
+    String? homework,
+    String? shiftSection,
+    String? studentId,
+    String? gradeLevel,
+  }) {
+    return CurriculumPeriod(
+      id: id ?? this.id,
+      subjectCode: subjectCode ?? this.subjectCode,
+      subjectName: subjectName ?? this.subjectName,
+      subjectNameMy: subjectNameMy ?? this.subjectNameMy,
+      teacherName: teacherName ?? this.teacherName,
+      room: room ?? this.room,
+      dayOfWeek: dayOfWeek ?? this.dayOfWeek,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      color: color ?? this.color,
+      chapterTitle: chapterTitle ?? this.chapterTitle,
+      chapterDescription: chapterDescription ?? this.chapterDescription,
+      homework: homework ?? this.homework,
+      shiftSection: shiftSection ?? this.shiftSection,
+      studentId: studentId ?? this.studentId,
+      gradeLevel: gradeLevel ?? this.gradeLevel,
     );
   }
 
@@ -135,6 +181,8 @@ class CurriculumPeriod {
       chapterTitle: (json['topic'] ?? json['chapter_title'])?.toString() ?? 'Core MOE Lesson',
       chapterDescription: (json['description'] ?? json['topic'])?.toString() ?? '',
       shiftSection: (json['shift_type'] ?? json['shift_section'])?.toString() ?? 'full_day',
+      studentId: json['student_id']?.toString(),
+      gradeLevel: json['grade_level']?.toString(),
     );
   }
 
@@ -142,6 +190,8 @@ class CurriculumPeriod {
   Map<String, dynamic> toSqliteMap() {
     return {
       'id': id,
+      'student_id': studentId ?? '',
+      'grade_level': gradeLevel ?? '',
       'subject_code': subjectCode,
       'subject_name': subjectName,
       'subject_name_my': subjectNameMy,
@@ -164,6 +214,8 @@ class CurriculumPeriod {
   factory CurriculumPeriod.fromSqliteMap(Map<String, dynamic> map) {
     return CurriculumPeriod(
       id: map['id']?.toString() ?? '',
+      studentId: (map['student_id']?.toString().isEmpty ?? true) ? null : map['student_id']?.toString(),
+      gradeLevel: (map['grade_level']?.toString().isEmpty ?? true) ? null : map['grade_level']?.toString(),
       subjectCode: map['subject_code']?.toString() ?? '',
       subjectName: map['subject_name']?.toString() ?? '',
       subjectNameMy: map['subject_name_my']?.toString() ?? '',
@@ -186,9 +238,213 @@ class CurriculumPeriod {
     );
   }
 
+  /// Resolves appropriate sample curriculum based on student's grade
+  static List<CurriculumPeriod> getCurriculumForGrade(
+    String? grade, {
+    String shift = 'full_day',
+    String? studentId,
+  }) {
+    final lower = (grade ?? '').toLowerCase();
+    if (lower.contains('kg') || lower.contains('kindergarten')) {
+      return getSampleKGCurriculum(shift: shift, studentId: studentId);
+    } else if (lower.contains('5') || lower.contains('primary') || lower.contains('g5')) {
+      return getSampleGrade5Curriculum(shift: shift, studentId: studentId);
+    } else {
+      return getSampleGrade8Curriculum(shift: shift, studentId: studentId);
+    }
+  }
+
+  /// Weekly curriculum for Kindergarten (KG): Early Childhood Care and Development (ECCD) official schedule
+  static List<CurriculumPeriod> getSampleKGCurriculum({String shift = 'full_day', String? studentId}) {
+    final List<CurriculumPeriod> periods = [];
+
+    final kgSchedule = <int, List<Map<String, String>>>{
+      1: [ // တနင်္လာ (Monday)
+        {'my': 'ပြောဆို', 'en': 'Oral Expression & Speaking', 'code': 'KG-SPK', 'topic': 'အသံထွက်နှင့် အပြောအဆို လေ့ကျင့်ခြင်း'},
+        {'my': 'ကိုယ်စိတ်', 'en': 'Physical & Mental Well-being', 'code': 'KG-PSE', 'topic': 'ခန္ဓာကိုယ်လှုပ်ရှားမှုနှင့် စိတ်ပိုင်းဆိုင်ရာ ဖွံ့ဖြိုးမှု'},
+        {'my': 'သီဆို', 'en': 'Singing & Nursery Rhymes', 'code': 'KG-SNG', 'topic': 'ကလေးကဗျာနှင့် သံပြိုင်ရွတ်ဆိုခြင်း'},
+        {'my': 'ဂီတ', 'en': 'Music & Rhythm', 'code': 'KG-MUS', 'topic': 'စည်းဝါးနှင့် တူရိယာသံစဉ် လေ့လာခြင်း'},
+        {'my': 'စာရိတ္တ', 'en': 'Moral & Character Building', 'code': 'KG-MOR', 'topic': 'ယဉ်ကျေးလိမ္မာနှင့် လူမှုဆက်ဆံရေး'},
+        {'my': 'စိတ်ကြိုက်ဘာသာရပ်များ သင်ကြားခြင်း', 'en': 'Free Choice Activities & Electives', 'code': 'KG-ACT', 'topic': 'စိတ်ကြိုက် ကစားနည်းနှင့် တီထွင်ဖန်တီးမှု လှုပ်ရှားခြင်း'},
+      ],
+      2: [ // အင်္ဂါ (Tuesday)
+        {'my': 'ပြောဆို', 'en': 'Oral Expression & Speaking', 'code': 'KG-SPK', 'topic': 'ပုံပြင်ပြောခြင်းနှင့် စကားပြောစွမ်းရည်'},
+        {'my': 'ကိုယ်စိတ်', 'en': 'Physical & Mental Well-being', 'code': 'KG-PSE', 'topic': 'လက်ချောင်းကြွက်သားနှင့် ဟန်ချက်ညီ လှုပ်ရှားမှု'},
+        {'my': 'သင်္ချာ', 'en': 'Early Mathematics & Numbers', 'code': 'KG-MTH', 'topic': 'ကိန်းဂဏန်းနှင့် ပုံသဏ္ဌာန်များ ရေတွက်ခြင်း'},
+        {'my': 'ကိုယ်စိတ်', 'en': 'Physical & Mental Well-being', 'code': 'KG-PSE', 'topic': 'ကျန်းမာရေးအလေ့အကျင့်နှင့် ကိုယ်လက်လှုပ်ရှား'},
+        {'my': 'စာရိတ္တ', 'en': 'Moral & Character Building', 'code': 'KG-MOR', 'topic': 'မိဘဆရာ ရိုသေလေးစားမှုနှင့် ပူးပေါင်းဆောင်ရွက်ခြင်း'},
+        {'my': 'စိတ်ကြိုက်ဘာသာရပ်များ သင်ကြားခြင်း', 'en': 'Free Choice Activities & Electives', 'code': 'KG-ACT', 'topic': 'စိတ်ကြိုက် ကစားနည်းနှင့် တီထွင်ဖန်တီးမှု လှုပ်ရှားခြင်း'},
+      ],
+      3: [ // ဗုဒ္ဓဟူး (Wednesday)
+        {'my': 'ပြောဆို', 'en': 'Oral Expression & Speaking', 'code': 'KG-SPK', 'topic': 'နေ့စဉ်သုံး စကားပြောနှင့် အမေးအဖြေ'},
+        {'my': 'သီဆို', 'en': 'Singing & Nursery Rhymes', 'code': 'KG-SNG', 'topic': 'ရိုးရာတေးသံသာနှင့် ကဗျာများ'},
+        {'my': 'သင်္ချာ', 'en': 'Early Mathematics & Numbers', 'code': 'KG-MTH', 'topic': 'အရွယ်အစားနှင့် အရေအတွက် နှိုင်းယှဉ်ခြင်း'},
+        {'my': 'ကိုယ်စိတ်', 'en': 'Physical & Mental Well-being', 'code': 'KG-PSE', 'topic': 'အာရုံခံစားမှုနှင့် စိတ်လှုပ်ရှားမှု ထိန်းကျောင်းခြင်း'},
+        {'my': 'ဘဝ', 'en': 'Life Skills & World Around Us', 'code': 'KG-LIF', 'topic': 'နေ့စဉ်လူနေမှုဘဝနှင့် သန့်ရှင်းရေး'},
+        {'my': 'စိတ်ကြိုက်ဘာသာရပ်များ သင်ကြားခြင်း', 'en': 'Free Choice Activities & Electives', 'code': 'KG-ACT', 'topic': 'စိတ်ကြိုက် ကစားနည်းနှင့် တီထွင်ဖန်တီးမှု လှုပ်ရှားခြင်း'},
+      ],
+      4: [ // ကြာသပတေး (Thursday)
+        {'my': 'ပြောဆို', 'en': 'Oral Expression & Speaking', 'code': 'KG-SPK', 'topic': 'အသံထွက်မှန်ကန်ရေးနှင့် ဗျည်းသရ လေ့ကျင့်ခြင်း'},
+        {'my': 'အင်္ဂလိပ်', 'en': 'Early English Language', 'code': 'KG-ENG', 'topic': 'ABC Alphabet & Phonics Songs'},
+        {'my': 'ပတ်ဝန်းကျင်', 'en': 'Environment & Nature Studies', 'code': 'KG-ENV', 'topic': 'သဘာဝပတ်ဝန်းကျင်၊ သစ်ပင်နှင့် တိရစ္ဆာန်ငယ်များ'},
+        {'my': 'ပတ်ဝန်းကျင်', 'en': 'Environment & Nature Studies', 'code': 'KG-ENV', 'topic': 'ရာသီဥတုနှင့် ပတ်ဝန်းကျင်သန့်ရှင်းရေး'},
+        {'my': 'ဘဝ', 'en': 'Life Skills & World Around Us', 'code': 'KG-LIF', 'topic': 'အန္တရာယ်ကင်းရှင်းရေးနှင့် ပူးပေါင်းကစားခြင်း'},
+        {'my': 'စိတ်ကြိုက်ဘာသာရပ်များ သင်ကြားခြင်း', 'en': 'Free Choice Activities & Electives', 'code': 'KG-ACT', 'topic': 'စိတ်ကြိုက် ကစားနည်းနှင့် တီထွင်ဖန်တီးမှု လှုပ်ရှားခြင်း'},
+      ],
+      5: [ // သောကြာ (Friday)
+        {'my': 'ပြောဆို', 'en': 'Oral Expression & Speaking', 'code': 'KG-SPK', 'topic': 'အပတ်စဉ် အတွေ့အကြုံ မျှဝေပြောဆိုခြင်း'},
+        {'my': 'အင်္ဂလိပ်', 'en': 'Early English Language', 'code': 'KG-ENG', 'topic': 'Greeting words, Colors and Rhymes'},
+        {'my': 'ကိုယ်စိတ်', 'en': 'Physical & Mental Well-being', 'code': 'KG-PSE', 'topic': 'အားကစားနှင့် ကိုယ်လက်ကြံ့ခိုင်မှု ကစားနည်းများ'},
+        {'my': 'အနုပညာ', 'en': 'Creative Arts & Crafts', 'code': 'KG-ART', 'topic': 'ဆေးရောင်ခြယ်ခြင်း၊ စက္ကူခေါက်ခြင်းနှင့် လက်မှုဖန်တီးမှု'},
+        {'my': 'ဂီတ', 'en': 'Music & Rhythm', 'code': 'KG-MUS', 'topic': 'အက၊ အလှနှင့် တေးဂီတ လှုပ်ရှားမှု'},
+        {'my': 'စိတ်ကြိုက်ဘာသာရပ်များ သင်ကြားခြင်း', 'en': 'Free Choice Activities & Electives', 'code': 'KG-ACT', 'topic': 'စိတ်ကြိုက် ကစားနည်းနှင့် တီထွင်ဖန်တီးမှု လှုပ်ရှားခြင်း'},
+      ],
+    };
+
+    final timeSlots = [
+      {'startH': 8, 'startM': 30, 'endH': 9, 'endM': 15},
+      {'startH': 9, 'startM': 15, 'endH': 10, 'endM': 0},
+      {'startH': 10, 'startM': 30, 'endH': 11, 'endM': 15},
+      {'startH': 11, 'startM': 15, 'endH': 12, 'endM': 0},
+      {'startH': 13, 'startM': 0, 'endH': 13, 'endM': 45},
+      {'startH': 14, 'startM': 0, 'endH': 14, 'endM': 45},
+    ];
+
+    for (int day = 1; day <= 5; day++) {
+      final lessons = kgSchedule[day]!;
+      for (int i = 0; i < lessons.length; i++) {
+        final slot = timeSlots[i];
+        final lesson = lessons[i];
+        periods.add(
+          CurriculumPeriod(
+            id: 'kg-d$day-p${i + 1}',
+            subjectCode: lesson['code']!,
+            subjectName: lesson['en']!,
+            subjectNameMy: lesson['my']!,
+            teacherName: 'Daw Thida Win (ဒေါ်သီတာဝင်း)',
+            room: 'KG Sunflower Room',
+            dayOfWeek: day,
+            startTime: TimeOfDay(hour: slot['startH']!, minute: slot['startM']!),
+            endTime: TimeOfDay(hour: slot['endH']!, minute: slot['endM']!),
+            color: const Color(0xFF64748B),
+            chapterTitle: lesson['topic']!,
+            chapterDescription: 'KG အခြေခံ သင်ရိုးညွှန်းတမ်း လေ့ကျင့်ခန်းများ။',
+            homework: 'အိမ်စာမရှိပါ (အတန်းတွင်း လှုပ်ရှားမှု)',
+            shiftSection: shift,
+            studentId: studentId,
+            gradeLevel: 'Kindergarten (KG)',
+          ),
+        );
+      }
+    }
+
+    return periods;
+  }
+
+  /// Weekly curriculum for Grade 5: primary foundation subjects (Myanmar, English, Math, Science, Social Studies)
+  static List<CurriculumPeriod> getSampleGrade5Curriculum({String shift = 'full_day', String? studentId}) {
+    final List<CurriculumPeriod> periods = [];
+    final days = [1, 2, 3, 4, 5]; // Mon - Fri
+
+    for (final day in days) {
+      periods.addAll([
+        CurriculumPeriod(
+          id: 'g5-d$day-p1',
+          subjectCode: 'MYAN-5',
+          subjectName: 'Myanmar Language',
+          subjectNameMy: 'မြန်မာစာ',
+          teacherName: 'Daw Khin Myo (ဒေါ်ခင်မျိုး)',
+          room: 'Room 102',
+          dayOfWeek: day,
+          startTime: const TimeOfDay(hour: 8, minute: 0),
+          endTime: const TimeOfDay(hour: 8, minute: 50),
+          color: const Color(0xFFF59E0B), // Amber
+          chapterTitle: 'မြန်မာစကားပြေနှင့် ဝါကျဖွဲ့စည်းပုံ သဒ္ဒါ',
+          chapterDescription: 'စာဖတ်စွမ်းရည် တိုးတက်ရေး၊ ဝေါဟာရသစ်များ မှတ်သားခြင်းနှင့် စာစီစာကုံး အခြေခံ။',
+          homework: 'စာမျက်နှာ ၂၄ အမေးအဖြေ ရေးသားရန်',
+          shiftSection: shift,
+          studentId: studentId,
+          gradeLevel: 'Grade 5-A',
+        ),
+        CurriculumPeriod(
+          id: 'g5-d$day-p2',
+          subjectCode: 'ENG-5',
+          subjectName: 'English Language',
+          subjectNameMy: 'အင်္ဂလိပ်စာ',
+          teacherName: 'Daw Aye Aye (ဒေါ်အေးအေး)',
+          room: 'Room 102',
+          dayOfWeek: day,
+          startTime: const TimeOfDay(hour: 9, minute: 0),
+          endTime: const TimeOfDay(hour: 9, minute: 50),
+          color: const Color(0xFF8B5CF6), // Purple
+          chapterTitle: 'Unit 3: Friends and Family in Myanmar',
+          chapterDescription: 'Present simple questions, reading short paragraphs, and spelling practice.',
+          homework: 'Workbook page 18 Exercise B',
+          shiftSection: shift,
+          studentId: studentId,
+          gradeLevel: 'Grade 5-A',
+        ),
+        CurriculumPeriod(
+          id: 'g5-d$day-p3',
+          subjectCode: 'MATH-5',
+          subjectName: 'Mathematics',
+          subjectNameMy: 'သင်္ချာ',
+          teacherName: 'U Min Din (ဦးမင်းဒင်)',
+          room: 'Room 102',
+          dayOfWeek: day,
+          startTime: const TimeOfDay(hour: 10, minute: 0),
+          endTime: const TimeOfDay(hour: 10, minute: 50),
+          color: const Color(0xFF3B82F6), // Blue
+          chapterTitle: 'အခန်း ၄: အပိုင်းကိန်းနှင့် ဒသမကိန်း တွက်ချက်နည်း',
+          chapterDescription: 'ပိုင်းခြေတူ ပိုင်းခြေမတူ အပိုင်းကိန်းများ ပေါင်းနှုတ်မြှောက်စား ပြဿနာများ ဖြေရှင်းခြင်း။',
+          homework: 'သင်္ချာလေ့ကျင့်ခန်း ၄.၁ ပုစ္ဆာ ၁ မှ ၅',
+          shiftSection: shift,
+          studentId: studentId,
+          gradeLevel: 'Grade 5-A',
+        ),
+        CurriculumPeriod(
+          id: 'g5-d$day-p4',
+          subjectCode: 'SCI-5',
+          subjectName: 'General Science',
+          subjectNameMy: 'အထွေထွေသိပ္ပံ',
+          teacherName: 'Daw Khin Myo (ဒေါ်ခင်မျိုး)',
+          room: 'Science Corner',
+          dayOfWeek: day,
+          startTime: const TimeOfDay(hour: 11, minute: 0),
+          endTime: const TimeOfDay(hour: 11, minute: 50),
+          color: const Color(0xFF10B981), // Emerald
+          chapterTitle: 'အပင်များနှင့် တိရစ္ဆာန်များ၏ ရှင်သန်မှု သဘာဝ',
+          chapterDescription: 'အလင်းမှီစုဖွဲ့ခြင်း၊ အမြစ်နှင့် ရွက်ကြောစနစ်များ လက်တွေ့လေ့လာခြင်း။',
+          shiftSection: shift,
+          studentId: studentId,
+          gradeLevel: 'Grade 5-A',
+        ),
+        CurriculumPeriod(
+          id: 'g5-d$day-p5',
+          subjectCode: 'SOC-5',
+          subjectName: 'Social Studies & Moral Education',
+          subjectNameMy: 'လူမှုရေးနှင့် ဘဝတွက်တာ ကျွမ်းကျင်မှု',
+          teacherName: 'U Min Din (ဦးမင်းဒင်)',
+          room: 'Room 102',
+          dayOfWeek: day,
+          startTime: const TimeOfDay(hour: 13, minute: 0),
+          endTime: const TimeOfDay(hour: 13, minute: 50),
+          color: const Color(0xFF06B6D4), // Cyan
+          chapterTitle: 'မြန်မာ့သမိုင်းနှင့် နိုင်ငံသားတာဝန်များ',
+          chapterDescription: 'ပုဂံခေတ်သမိုင်း အကျဉ်းနှင့် ကျောင်းတွင်း အတူတကွ ပူးပေါင်းဆောင်ရွက်မှု။',
+          shiftSection: shift,
+          studentId: studentId,
+          gradeLevel: 'Grade 5-A',
+        ),
+      ]);
+    }
+
+    return periods;
+  }
+
   /// Weekly curriculum for Grade 8 aligned to realistic 8:00 AM - 4:00 PM school schedule
   /// Each time slot (e.g. 09:00 - 09:50) contains strictly ONE single subject per day.
-  static List<CurriculumPeriod> getSampleGrade8Curriculum({String shift = 'full_day'}) {
+  static List<CurriculumPeriod> getSampleGrade8Curriculum({String shift = 'full_day', String? studentId}) {
     if (shift == 'morning') {
       return _getMorningShiftCurriculum();
     } else if (shift == 'afternoon') {

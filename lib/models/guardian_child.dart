@@ -93,7 +93,7 @@ class GuardianChild {
       "student_id": id,
       "student_name": fullName,
       "student_email": email,
-      "did": did ?? "did:edu:mm:013:MMR013035-STU-$rollNo",
+      "did": did ?? "did:edu:mm:013:${schoolCode.isNotEmpty ? schoolCode : 'SCH'}-STU-$rollNo",
       "blockchain_address": blockchainAddress ?? "0x217ff15fe5d8cee90f957185c8dd580f57347d20",
       "credential_hash": credentialHash ?? "0xae5becb56ee81d0284cb147d654636ad074b76d13d750c75cc515ebd701a5ab4",
       "merkle_root": "0xae5becb56ee81d0284cb147d654636ad074b76d13d750c75cc515ebd701a5ab4",
@@ -101,8 +101,8 @@ class GuardianChild {
       "anchor_status": anchorStatus ?? "anchored",
       "issuer_school": schoolName,
       "school_code": schoolCode,
-      "region": "Yangon Region",
-      "township": "Hlegu",
+      "region": "",
+      "township": "",
       "raw_credential_json": {
         "@context": [
           "https://www.w3.org/ns/credentials/v2",
@@ -114,7 +114,7 @@ class GuardianChild {
         "validFrom": "2026-09-24T00:00:00Z",
         "credentialSubject": {
           "academic_year": "2026-2027",
-          "id": did ?? "did:edu:mm:013:MMR013035-STU-$rollNo",
+          "id": did ?? "did:edu:mm:013:${schoolCode.isNotEmpty ? schoolCode : 'SCH'}-STU-$rollNo",
           "student_name": fullName,
           "grade_level": gradeLevel,
           "school_name": schoolName,

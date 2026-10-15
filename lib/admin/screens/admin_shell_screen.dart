@@ -38,8 +38,8 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final adminName = _user?['full_name'] ?? 'ဦးအောင်မျိုး (ကျောင်းအုပ်ကြီး)';
-    final schoolName = _user?['school_name'] ?? 'အထက အင်းတိုင် (BEHS Intaing)';
+    final adminName = _user?['full_name'] ?? 'ကျောင်းအုပ်ကြီး';
+    final schoolName = _user?['school_name'] ?? _user?['school_name_my'] ?? 'အခြေခံပညာကျောင်း';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -91,7 +91,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF4338CA).withOpacity(0.3),
+                    color: const Color(0xFF4338CA).withValues(alpha: 0.3),
                     blurRadius: 15,
                     offset: const Offset(0, 6),
                   ),
@@ -103,7 +103,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white30, width: 1.5),
                     ),
@@ -122,10 +122,9 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'ကျောင်းအုပ်ကြီး • MMR013035-BEHS01',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        Text(
+                          'ကျောင်းအုပ်ကြီး${_user?['school_code'] != null ? ' • ${_user!['school_code']}' : ''}',
+                          style: const TextStyle(fontSize: 12, color: Colors.white70),
                         ),
                       ],
                     ),
@@ -145,7 +144,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 border: Border.all(color: Colors.indigo.shade100, width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.indigo.withOpacity(0.06),
+                    color: Colors.indigo.withValues(alpha: 0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -197,7 +196,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'ကျောင်းဝင်ပေါက် ကွန်ပျူတာ (PWA) ကို ပထမဆုံးအကြိမ် ဖွင့်ချိန်တွင် ပေါ်လာသော QR ကုဒ်ကို ဤမိုဘိုင်းဖုန်းဖြင့် စကင်ဖတ်၍ စက်အား အထက အင်းတိုင် နှင့် အပြီးအပိုင် ချိတ်ဆက်ပေးပါ။',
+                    'ကျောင်းဝင်ပေါက် ကွန်ပျူတာ (PWA) ကို ပထမဆုံးအကြိမ် ဖွင့်ချိန်တွင် ပေါ်လာသော QR ကုဒ်ကို ဤမိုဘိုင်းဖုန်းဖြင့် စကင်ဖတ်၍ စက်အား မိမိကျောင်းနှင့် အပြီးအပိုင် ချိတ်ဆက်ပေးပါ။',
                     style: TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
                   ),
                   const SizedBox(height: 16),

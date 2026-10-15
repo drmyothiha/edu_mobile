@@ -49,21 +49,26 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
     });
 
     try {
+      final user = await StorageService.getUser();
+      final schoolCode = user?['school_code']?.toString() ?? '';
+      final schoolName = user?['school_name']?.toString() ?? 'Basic Education School';
+      final teacherName = user?['full_name']?.toString() ?? 'Classroom Teacher';
+
       // Build canonical Whole-Child sync payload
       final payload = {
         'sync_metadata': {
           'protocol_version': '2.1-whole-child',
-          'school_code': 'MMR013035-BEHS01',
-          'school_name': 'Basic Education High School Intaing (အခြေခံပညာအထက်တန်းကျောင်း အင်းတိုင်)',
-          'township': 'Hlegu',
+          'school_code': schoolCode,
+          'school_name': schoolName,
+          'township': user?['township']?.toString() ?? '',
           'class_id': 'f833a1dc-b85a-4063-a3ef-e057df2129f0',
           'class_name': 'Grade 5-A (Primary)',
           'academic_year': '2026-2027',
           'reporting_period': '2026-10',
           'reporting_teacher': {
-            'teacher_id': 'usr_thida_0911',
-            'name': 'Daw Thida',
-            'role': 'Teacher, Intaing BEHS',
+            'teacher_id': user?['id']?.toString() ?? 'teacher_01',
+            'name': teacherName,
+            'role': 'Teacher',
           },
           'generated_at': DateTime.now().toIso8601String(),
           'total_official_school_days': 22,
@@ -129,19 +134,24 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
     }
   }
 
-  void _exportJsonBundle() {
+  void _exportJsonBundle() async {
+    final user = await StorageService.getUser();
+    final schoolCode = user?['school_code']?.toString() ?? '';
+    final schoolName = user?['school_name']?.toString() ?? 'Basic Education School';
+    final teacherName = user?['full_name']?.toString() ?? 'Classroom Teacher';
+
     final payload = {
       'sync_metadata': {
         'protocol_version': '2.1-whole-child',
-        'school_code': 'MMR013035-BEHS01',
-        'school_name': 'Basic Education High School Intaing',
-        'township': 'Hlegu',
+        'school_code': schoolCode,
+        'school_name': schoolName,
+        'township': user?['township']?.toString() ?? '',
         'class_name': 'Grade 5-A (Primary)',
         'academic_year': '2026-2027',
         'reporting_period': '2026-10',
         'reporting_teacher': {
-          'name': 'Daw Thida',
-          'role': 'Teacher, Intaing BEHS',
+          'name': teacherName,
+          'role': 'Teacher',
         },
         'generated_at': DateTime.now().toIso8601String(),
         'total_enrolled_students': _records.length,
@@ -211,7 +221,7 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
             Text(
-              'Daw Thida (Teacher, Intaing BEHS)',
+              'စာသင်ခန်း တာဝန်ခံ ဆရာ/ဆရာမ • Classroom Teacher',
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
             ),
           ],

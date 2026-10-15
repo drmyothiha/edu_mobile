@@ -7,6 +7,7 @@ import '../../services/crypto_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../admin/screens/kiosk_pairing_scanner_screen.dart';
 import 'scan_history_screen.dart';
 
 class GateVerifierScreen extends StatefulWidget {
@@ -53,6 +54,22 @@ class _GateVerifierScreenState extends State<GateVerifierScreen> {
   }
 
   Future<void> _processScannedData(String rawData) async {
+    // Detect Gate Kiosk pairing QR code directly from camera
+    if (rawData.startsWith('edu:kiosk:pair:') || rawData.startsWith('kiosk_')) {
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => KioskPairingScannerScreen(initialPayload: rawData),
+        ),
+      );
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+      return;
+    }
+
     VerificationResult result;
 
     final parsedPayload = CryptoService.parseScannedPayload(rawData);
@@ -79,7 +96,7 @@ class _GateVerifierScreenState extends State<GateVerifierScreen> {
         // Parse structured DID tokens: did:edu:mm:<sr_pcode>:<school>-<year>-<roll>
         String rollText = 'Gate Pass';
         String schoolText = 'Registered Myanmar School';
-        String codeText = 'MMR013034-PV02';
+        String codeText = '';
         final tokens = did.split(':');
         if (tokens.length >= 5) {
           final idPart = tokens[4];
@@ -101,10 +118,10 @@ class _GateVerifierScreenState extends State<GateVerifierScreen> {
             did: did,
             studentName: matched.fullName,
             studentRoll: matched.rollNo,
-            schoolName: 'BEHS Intaing (အင်းတိုင် အထက)',
-            schoolCode: 'MMR013035-BEHS01',
-            township: 'Hlegu',
-            region: 'Yangon Region',
+            schoolName: schoolText.isNotEmpty ? schoolText : 'အခြေခံပညာကျောင်း',
+            schoolCode: codeText,
+            township: '',
+            region: '',
             academicYear: matched.academicYear,
             credentialHash: '0x${did.hashCode.toRadixString(16)}',
             verificationTime: DateTime.now(),

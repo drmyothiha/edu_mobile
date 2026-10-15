@@ -77,8 +77,8 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
 
     final teacherName = _teacherUser?.fullName.isNotEmpty == true
         ? _teacherUser!.fullName
-        : 'Daw Thida (ဒေါ်သီတာ)';
-    final schoolName = _teacherUser?.schoolName ?? 'BEHS Intaing (အင်းတိုင် အထက)';
+        : 'ဆရာ/ဆရာမ';
+    final schoolName = _teacherUser?.schoolName ?? 'အခြေခံပညာကျောင်း';
 
     return Scaffold(
       appBar: PreferredSize(

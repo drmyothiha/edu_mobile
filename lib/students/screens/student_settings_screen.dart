@@ -533,7 +533,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
     final gradeLevel = _user?.gradeLevel ?? 'Grade 8';
     final schoolName =
         _user?.schoolName ??
-        'Basic Education High School Intaing (အင်းတိုင် အထက)';
+        'Basic Education School';
     final email = _user?.email ?? 'student.alice@edu.local';
     final studentId = _user?.id ?? 'STU-2026-0842';
     final guardianName = _user?.guardianName ?? 'Daw Khin Mar (ဒေါ်ခင်မာ)';
@@ -840,8 +840,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                         ),
                       ],
                       onChanged: (val) {
-                        if (val != null)
+                        if (val != null) {
                           setState(() => _selectedLanguage = val);
+                        }
                       },
                     ),
                   ),

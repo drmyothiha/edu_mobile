@@ -9,7 +9,7 @@ import '../models/curriculum_period.dart';
 /// Falls back safely when running in web or unit tests without native SQLite bindings.
 class SqliteTimetableHelper {
   static const String dbName = 'student_timetable.db';
-  static const int dbVersion = 1;
+  static const int dbVersion = 2;
 
   static const String tablePeriods = 'curriculum_periods';
   static const String tableMetadata = 'timetable_metadata';
@@ -40,7 +40,9 @@ class SqliteTimetableHelper {
         onCreate: (db, version) async {
           await db.execute('''
             CREATE TABLE IF NOT EXISTS $tablePeriods (
-              id TEXT PRIMARY KEY,
+              id TEXT,
+              student_id TEXT,
+              grade_level TEXT,
               subject_code TEXT,
               subject_name TEXT,
               subject_name_my TEXT,
@@ -55,7 +57,8 @@ class SqliteTimetableHelper {
               chapter_title TEXT,
               chapter_description TEXT,
               homework TEXT,
-              shift_section TEXT
+              shift_section TEXT,
+              PRIMARY KEY (id, student_id)
             )
           ''');
 
@@ -66,7 +69,30 @@ class SqliteTimetableHelper {
             )
           ''');
         },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            try {
+              await db.execute('ALTER TABLE $tablePeriods ADD COLUMN student_id TEXT DEFAULT ""');
+            } catch (_) {}
+            try {
+              await db.execute('ALTER TABLE $tablePeriods ADD COLUMN grade_level TEXT DEFAULT ""');
+            } catch (_) {}
+          }
+        },
       );
+
+      // Defensive migration check
+      try {
+        final cols = await _database!.rawQuery('PRAGMA table_info($tablePeriods)');
+        final colNames = cols.map((c) => c['name']?.toString()).toSet();
+        if (!colNames.contains('student_id')) {
+          await _database!.execute('ALTER TABLE $tablePeriods ADD COLUMN student_id TEXT DEFAULT ""');
+        }
+        if (!colNames.contains('grade_level')) {
+          await _database!.execute('ALTER TABLE $tablePeriods ADD COLUMN grade_level TEXT DEFAULT ""');
+        }
+      } catch (_) {}
+
       _sqliteAvailable = true;
       return _database;
     } catch (e) {
@@ -83,6 +109,8 @@ class SqliteTimetableHelper {
     String? shift,
     String? className,
     String? classId,
+    String? studentId,
+    String? gradeLevel,
   }) async {
     final db = await getDatabase();
     if (db == null) return false;
@@ -91,31 +119,58 @@ class SqliteTimetableHelper {
       await db.transaction((txn) async {
         final batch = txn.batch();
 
-        if (shift != null && shift.isNotEmpty) {
+        if (studentId != null && studentId.isNotEmpty) {
+          if (shift != null && shift.isNotEmpty) {
+            batch.delete(
+              tablePeriods,
+              where: 'student_id = ? AND shift_section = ?',
+              whereArgs: [studentId, shift],
+            );
+          } else {
+            batch.delete(
+              tablePeriods,
+              where: 'student_id = ?',
+              whereArgs: [studentId],
+            );
+          }
+        } else if (shift != null && shift.isNotEmpty) {
           batch.delete(tablePeriods, where: 'shift_section = ?', whereArgs: [shift]);
         } else {
           batch.delete(tablePeriods);
         }
 
         for (final period in periods) {
+          final map = period.toSqliteMap();
+          if (studentId != null && studentId.isNotEmpty) {
+            map['student_id'] = studentId;
+          }
+          if (gradeLevel != null && gradeLevel.isNotEmpty) {
+            map['grade_level'] = gradeLevel;
+          }
           batch.insert(
             tablePeriods,
-            period.toSqliteMap(),
+            map,
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
         }
 
         if (shift != null) {
+          final shiftKey = (studentId != null && studentId.isNotEmpty)
+              ? 'school_shift_$studentId'
+              : 'school_shift';
           batch.insert(
             tableMetadata,
-            {'meta_key': 'school_shift', 'meta_value': shift},
+            {'meta_key': shiftKey, 'meta_value': shift},
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
         }
         if (className != null) {
+          final classKey = (studentId != null && studentId.isNotEmpty)
+              ? 'class_name_$studentId'
+              : 'class_name';
           batch.insert(
             tableMetadata,
-            {'meta_key': 'class_name', 'meta_value': className},
+            {'meta_key': classKey, 'meta_value': className},
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
         }
@@ -126,9 +181,12 @@ class SqliteTimetableHelper {
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
         }
+        final syncKey = (studentId != null && studentId.isNotEmpty)
+            ? 'last_sync_time_$studentId'
+            : 'last_sync_time';
         batch.insert(
           tableMetadata,
-          {'meta_key': 'last_sync_time', 'meta_value': DateTime.now().toIso8601String()},
+          {'meta_key': syncKey, 'meta_value': DateTime.now().toIso8601String()},
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
 
@@ -141,25 +199,71 @@ class SqliteTimetableHelper {
     }
   }
 
-  /// Fetch all cached periods for the given shift from SQLite
-  static Future<List<CurriculumPeriod>?> getPeriods({String? shift}) async {
+  /// Fetch all cached periods for the given student/grade and shift from SQLite
+  static Future<List<CurriculumPeriod>?> getPeriods({
+    String? shift,
+    String? studentId,
+    String? gradeLevel,
+  }) async {
     final db = await getDatabase();
     if (db == null) return null;
 
     try {
-      List<Map<String, dynamic>> maps;
-      if (shift != null && shift.isNotEmpty) {
-        maps = await db.query(
-          tablePeriods,
-          where: 'shift_section = ?',
-          whereArgs: [shift],
-          orderBy: 'day_of_week ASC, start_hour ASC, start_minute ASC',
-        );
-      } else {
-        maps = await db.query(
-          tablePeriods,
-          orderBy: 'day_of_week ASC, start_hour ASC, start_minute ASC',
-        );
+      List<Map<String, dynamic>> maps = [];
+
+      // 1. Try querying with exact studentId
+      if (studentId != null && studentId.isNotEmpty) {
+        if (shift != null && shift.isNotEmpty) {
+          maps = await db.query(
+            tablePeriods,
+            where: 'student_id = ? AND shift_section = ?',
+            whereArgs: [studentId, shift],
+            orderBy: 'day_of_week ASC, start_hour ASC, start_minute ASC',
+          );
+        } else {
+          maps = await db.query(
+            tablePeriods,
+            where: 'student_id = ?',
+            whereArgs: [studentId],
+            orderBy: 'day_of_week ASC, start_hour ASC, start_minute ASC',
+          );
+        }
+      }
+
+      // 2. If empty and gradeLevel provided, query by gradeLevel
+      if (maps.isEmpty && gradeLevel != null && gradeLevel.isNotEmpty) {
+        if (shift != null && shift.isNotEmpty) {
+          maps = await db.query(
+            tablePeriods,
+            where: 'grade_level = ? AND shift_section = ?',
+            whereArgs: [gradeLevel, shift],
+            orderBy: 'day_of_week ASC, start_hour ASC, start_minute ASC',
+          );
+        } else {
+          maps = await db.query(
+            tablePeriods,
+            where: 'grade_level = ?',
+            whereArgs: [gradeLevel],
+            orderBy: 'day_of_week ASC, start_hour ASC, start_minute ASC',
+          );
+        }
+      }
+
+      // 3. Fallback to generic shift query
+      if (maps.isEmpty && (studentId == null || studentId.isEmpty)) {
+        if (shift != null && shift.isNotEmpty) {
+          maps = await db.query(
+            tablePeriods,
+            where: 'shift_section = ?',
+            whereArgs: [shift],
+            orderBy: 'day_of_week ASC, start_hour ASC, start_minute ASC',
+          );
+        } else {
+          maps = await db.query(
+            tablePeriods,
+            orderBy: 'day_of_week ASC, start_hour ASC, start_minute ASC',
+          );
+        }
       }
 
       if (maps.isEmpty) return null;
@@ -171,32 +275,43 @@ class SqliteTimetableHelper {
   }
 
   /// Fetch cached periods for a single day of week (1=Mon ... 7=Sun) from SQLite
-  static Future<List<CurriculumPeriod>?> getPeriodsForDay(int dayOfWeek, {String? shift}) async {
+  static Future<List<CurriculumPeriod>?> getPeriodsForDay(
+    int dayOfWeek, {
+    String? shift,
+    String? studentId,
+    String? gradeLevel,
+  }) async {
     final db = await getDatabase();
     if (db == null) return null;
 
     try {
-      List<Map<String, dynamic>> maps;
-      if (shift != null && shift.isNotEmpty) {
-        maps = await db.query(
-          tablePeriods,
-          where: 'day_of_week = ? AND shift_section = ?',
-          whereArgs: [dayOfWeek, shift],
-          orderBy: 'start_hour ASC, start_minute ASC',
-        );
-      } else {
-        maps = await db.query(
-          tablePeriods,
-          where: 'day_of_week = ?',
-          whereArgs: [dayOfWeek],
-          orderBy: 'start_hour ASC, start_minute ASC',
-        );
+      String whereClause = 'day_of_week = ?';
+      List<dynamic> whereArgs = [dayOfWeek];
+
+      if (studentId != null && studentId.isNotEmpty) {
+        whereClause += ' AND student_id = ?';
+        whereArgs.add(studentId);
+      } else if (gradeLevel != null && gradeLevel.isNotEmpty) {
+        whereClause += ' AND grade_level = ?';
+        whereArgs.add(gradeLevel);
       }
+
+      if (shift != null && shift.isNotEmpty) {
+        whereClause += ' AND shift_section = ?';
+        whereArgs.add(shift);
+      }
+
+      final maps = await db.query(
+        tablePeriods,
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: 'start_hour ASC, start_minute ASC',
+      );
 
       if (maps.isEmpty) return null;
       return maps.map((m) => CurriculumPeriod.fromSqliteMap(m)).toList();
     } catch (e) {
-      debugPrint('[SQLite] Error querying periods for day: $e');
+      debugPrint('[SQLite] Error querying day periods: $e');
       return null;
     }
   }

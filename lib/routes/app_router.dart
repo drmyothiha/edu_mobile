@@ -149,11 +149,11 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
                   icon: Icons.admin_panel_settings,
                   color: const Color(0xFF312E81),
                   title: 'School Admin (ကျောင်းအုပ်ကြီး)',
-                  subtitle: 'Kiosk provisioning • MMR013035-BEHS01 • School oversight',
+                  subtitle: 'Kiosk provisioning • ကျောင်းစီမံခန့်ခွဲမှု • School oversight',
                   onTap: () => _switchToRole(
                     role: AppUserRole.admin,
-                    fullName: 'U Aung Myo (ဦးအောင်မျိုး)',
-                    email: 'admin.ygn@edu.local',
+                    fullName: 'U Zaw Min (Principal, Pilot School)',
+                    email: 'admin@pilot.edu.local',
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -297,11 +297,14 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
     }
 
     final user = <String, dynamic>{
-      'id': 'd0000000-0000-0000-0000-000000000001',
+      'id': role == AppUserRole.admin ? 'd0000000-0000-0000-0000-000000000099' : 'd0000000-0000-0000-0000-000000000001',
       'email': email,
       'full_name': fullName,
       'role': role.name,
-      'school_name': 'Basic Education High School Intaing',
+      'school_name': 'Basic Education High School (Pilot)',
+      'school_name_my': 'အခြေခံပညာစံပြကျောင်း (Pilot School)',
+      'school_code': 'BEHS-PILOT',
+      'school_id': '0ac3f6b3-ce6d-4d15-bb4c-9b868f41aeb4',
     };
     if (gradeLevel != null) {
       user['grade_level'] = gradeLevel;
@@ -366,6 +369,7 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
     final navItems = [
       _MultiNavItem(Icons.wallet_outlined, Icons.wallet, 'ID Card', 'W3C VC'),
       _MultiNavItem(Icons.qr_code_scanner_outlined, Icons.qr_code_scanner, 'Kiosk', 'Auto Scan'),
+      _MultiNavItem(Icons.admin_panel_settings_outlined, Icons.admin_panel_settings, 'Admin', 'Gate Setup'),
       _MultiNavItem(Icons.hub_outlined, Icons.hub, 'Whole-Child', 'Grade 5-A'),
       _MultiNavItem(Icons.chat_bubble_outline, Icons.chat_bubble, 'Parent Chat', 'Alerts & Chat'),
     ];
@@ -376,6 +380,7 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
         children: [
           StudentWalletScreen(onSwitchMode: _showRoleSwitchDialog),
           GateVerifierScreen(onSwitchMode: _showRoleSwitchDialog),
+          AdminShellScreen(onSwitchRole: _showRoleSwitchDialog),
           ClassroomSyncScreen(onSwitchMode: _showRoleSwitchDialog),
           NotificationsScreen(onSwitchMode: _showRoleSwitchDialog),
         ],

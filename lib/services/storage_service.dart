@@ -196,17 +196,17 @@ class StorageService {
       } catch (_) {}
     }
 
-    // Default Seed for Daw Khin Mar's Children (Intaing BEHS)
+    // Default Seed for Children
     final defaultChildren = [
       GuardianChild(
-        id: 'su.g5@intaing.edu.local',
+        id: 'su.g5@edu.local',
         fullName: 'Ma Su Myat Noe (မစုမြတ်နိုး)',
-        email: 'su.g5@intaing.edu.local',
+        email: 'su.g5@edu.local',
         rollNo: '5A-01',
         gradeLevel: 'Grade 5-A',
         className: 'Grade 5-A (Primary)',
-        schoolName: 'BEHS Intaing (အင်းတိုင် အထက)',
-        schoolCode: 'MMR013035-BEHS01',
+        schoolName: 'အခြေခံပညာကျောင်း',
+        schoolCode: '',
         age: 10,
         nationalStudentId: 'MM-EDU-2026-88420',
         attendanceRatePct: 97.7,
@@ -226,14 +226,14 @@ class StorageService {
         dominantEmotionalState: 'Joyful & Curious',
       ),
       GuardianChild(
-        id: 'aung.kg@intaing.edu.local',
+        id: 'aung.kg@edu.local',
         fullName: 'Maung Aung Kaung Myat (မောင်အောင်ကောင်းမြတ်)',
-        email: 'aung.kg@intaing.edu.local',
+        email: 'aung.kg@edu.local',
         rollNo: 'KG-01',
         gradeLevel: 'Kindergarten (KG)',
         className: 'KG-A (Pre-Primary)',
-        schoolName: 'BEHS Intaing (အင်းတိုင် အထက)',
-        schoolCode: 'MMR013035-BEHS01',
+        schoolName: 'အခြေခံပညာကျောင်း',
+        schoolCode: '',
         age: 5,
         nationalStudentId: 'MM-EDU-2026-88429',
         attendanceRatePct: 98.2,
@@ -421,7 +421,7 @@ class StorageService {
     await prefs.setString(_keyTodaySwipeTimestamps, json.encode(map));
   }
 
-  /// Load Whole-Child records for Daw Thida's class (Grade 5-A, Intaing BEHS)
+  /// Load Whole-Child records for class (Grade 5-A)
   static Future<List<WholeChildRecord>> getWholeChildRecords() async {
     final prefs = await _instance;
     final data = prefs.getString(_keyWholeChildRecords);
@@ -436,10 +436,10 @@ class StorageService {
       } catch (_) {}
     }
 
-    // Default Seed for Daw Thida's Grade 5-A Class (Intaing BEHS)
+    // Default Seed for Grade 5-A Class
     final defaultRecords = [
       WholeChildRecord(
-        studentId: 'su.g5@intaing.edu.local',
+        studentId: 'su.g5@edu.local',
         rollNo: '5A-01',
         nationalStudentId: 'MM-EDU-2026-88420',
         fullName: 'Ma Su Myat Noe (မစုမြတ်နိုး)',
