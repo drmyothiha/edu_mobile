@@ -353,6 +353,119 @@ class ApiService {
       throw Exception(errMsg);
     }
   }
+
+  /// M03: Fetch Burmese weekly AI summaries for a student
+  static Future<List<Map<String, dynamic>>> fetchStudentWeeklySummaries(String studentId) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final uri = Uri.parse('$baseUrl/api/v1/students/$studentId/weekly-summaries');
+
+    final response = await http.get(uri, headers: {
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final list = json.decode(response.body) as List<dynamic>;
+      return list.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
+  /// M03: Fetch latest weekly summaries for all children of logged-in parent
+  static Future<List<Map<String, dynamic>>> fetchParentWeeklySummaries() async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final uri = Uri.parse('$baseUrl/api/v1/parents/my-children/weekly-summaries');
+
+    final response = await http.get(uri, headers: {
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final list = json.decode(response.body) as List<dynamic>;
+      return list.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
+  /// M03: Mark weekly summary as read by parent
+  static Future<void> markWeeklySummaryRead(String summaryId) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final uri = Uri.parse('$baseUrl/api/v1/parents/weekly-summaries/$summaryId/read');
+
+    await http.post(uri, headers: {
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+  }
+
+  /// M07: Submit formal record appeal for a student or child
+  static Future<Map<String, dynamic>> submitAppeal({
+    required String studentId,
+    required String recordType,
+    required String targetItemTitle,
+    required String contestedReason,
+    String currentValue = '',
+    String requestedCorrection = '',
+    String evidenceNotes = '',
+    String recordPeriod = '',
+  }) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final uri = Uri.parse('$baseUrl/api/v1/appeals');
+
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: json.encode({
+        'student_id': studentId,
+        'record_type': recordType,
+        'record_period': recordPeriod,
+        'target_item_title': targetItemTitle,
+        'current_value': currentValue,
+        'contested_reason': contestedReason,
+        'requested_correction': requestedCorrection,
+        'evidence_notes': evidenceNotes,
+      }),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      String errMsg = 'Failed to submit appeal (${response.statusCode})';
+      try {
+        final err = json.decode(response.body);
+        if (err['error'] != null) errMsg = err['error'];
+      } catch (_) {}
+      throw Exception(errMsg);
+    }
+  }
+
+  /// M07: Fetch appeals submitted by or associated with user
+  static Future<List<Map<String, dynamic>>> fetchAppeals({String? studentId}) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final q = studentId != null ? '?student_id=$studentId' : '';
+    final uri = Uri.parse('$baseUrl/api/v1/appeals$q');
+
+    final response = await http.get(uri, headers: {
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final list = json.decode(response.body) as List<dynamic>;
+      return list.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
 }
 
 

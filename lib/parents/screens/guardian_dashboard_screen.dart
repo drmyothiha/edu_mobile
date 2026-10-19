@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/guardian_child.dart';
 import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../screens/student_wallet_screen.dart';
 
@@ -25,6 +26,12 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   bool _isLoading = true;
   AppUser? _guardianUser;
 
+  // M03 & M07: Weekly Summaries & Record Appeals State
+  final Map<String, List<Map<String, dynamic>>> _weeklySummaries = {};
+  bool _loadingSummaries = false;
+  List<Map<String, dynamic>> _childAppeals = [];
+  bool _loadingAppeals = false;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +51,9 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         _selectedChildIndex = (savedIndex < children.length) ? savedIndex : 0;
         _isLoading = false;
       });
+      if (children.isNotEmpty) {
+        _loadChildSummariesAndAppeals(children[_selectedChildIndex].id);
+      }
     }
   }
 
@@ -52,6 +62,35 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
       _selectedChildIndex = index;
     });
     StorageService.setSelectedChildIndex(index);
+    if (index < _children.length) {
+      _loadChildSummariesAndAppeals(_children[index].id);
+    }
+  }
+
+  Future<void> _loadChildSummariesAndAppeals(String childId) async {
+    setState(() {
+      _loadingSummaries = true;
+      _loadingAppeals = true;
+    });
+    try {
+      final summaries = await ApiService.fetchStudentWeeklySummaries(childId);
+      final appeals = await ApiService.fetchAppeals(studentId: childId);
+      if (mounted) {
+        setState(() {
+          _weeklySummaries[childId] = summaries;
+          _childAppeals = appeals;
+          _loadingSummaries = false;
+          _loadingAppeals = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loadingSummaries = false;
+          _loadingAppeals = false;
+        });
+      }
+    }
   }
 
   void _openChildDigitalId(GuardianChild child) {
@@ -170,6 +209,14 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                   _buildChildHeaderCard(child),
                   const SizedBox(height: 16),
 
+                  // M07 Positive-Only Guardrail Badge
+                  _buildPositiveOnlyGuardrailBadge(),
+                  const SizedBox(height: 16),
+
+                  // M03 Plain-Language Burmese Weekly AI Summary Card
+                  _buildWeeklyAISummaryCard(child),
+                  const SizedBox(height: 16),
+
                   // Quick Action: View Digital ID Pass
                   _buildQuickActionBanner(child),
                   const SizedBox(height: 16),
@@ -184,6 +231,10 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
 
                   // Health & Growth Card
                   _buildHealthGrowthCard(child),
+                  const SizedBox(height: 16),
+
+                  // M07 Record Appeals Banner & Workflow
+                  _buildRecordAppealsBanner(child),
                   const SizedBox(height: 16),
 
                   // Teacher Direct Communication CTA
@@ -290,6 +341,698 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPositiveOnlyGuardrailBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.verified_user_outlined, size: 20, color: Color(0xFF047857)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'M07 Guardrail: Positive-Only Records (အပြုသဘောဆောင် မှတ်တမ်းစနစ်)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF065F46),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Negative marks, demerit points, and punitive entries are strictly prohibited from student longitudinal files.',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.green.shade900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyAISummaryCard(GuardianChild child) {
+    final summaries = _weeklySummaries[child.id] ?? [];
+    final latestSummary = summaries.isNotEmpty ? summaries.first : null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFDDD6FE)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEDE9FE),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.auto_awesome, size: 20, color: Color(0xFF6D28D9)),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Weekly Learning Summary',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF4C1D95)),
+                      ),
+                      Text(
+                        'အပတ်စဉ် AI အကျဉ်းချုပ် (မိဘများအတွက်)',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.purple.shade700),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              if (_loadingSummaries)
+                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              else if (latestSummary != null && latestSummary['read_by_parent_at'] == null)
+                TextButton(
+                  onPressed: () async {
+                    final id = latestSummary['id']?.toString();
+                    if (id != null) {
+                      await ApiService.markWeeklySummaryRead(id);
+                      if (mounted) {
+                        setState(() {
+                          latestSummary['read_by_parent_at'] = DateTime.now().toIso8601String();
+                        });
+                      }
+                    }
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    backgroundColor: const Color(0xFFEDE9FE),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Mark Read', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9))),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (_loadingSummaries && latestSummary == null) ...[
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ] else if (latestSummary != null) ...[
+            // Dates & Attendance Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F3FF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${latestSummary['week_start_date']} မှ ${latestSummary['week_end_date']} အထိ',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF5B21B6)),
+                  ),
+                  Text(
+                    'တက်ရောက်မှု: ${(latestSummary['attendance_metrics']?['attendance_pct'] ?? 100).toString()}%',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF047857)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Burmese Narrative Prose
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAFAFA),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Text(
+                latestSummary['summary_my'] ??
+                    'ဤတစ်ပတ်အတွင်း ကျောင်းသားသည် သင်ခန်းစာများတွင် တက်ကြွစွာ ပါဝင်ခဲ့ပြီး သင်ယူမှု တိုးတက်မှု ကောင်းမွန်ပါသည်။',
+                style: const TextStyle(fontSize: 12, height: 1.5, color: Color(0xFF1E293B)),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Strengths Section
+            if (latestSummary['strengths_my'] != null && (latestSummary['strengths_my'] as List).isNotEmpty) ...[
+              Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF059669)),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'ဤတစ်ပတ် ထူးချွန်တိုးတက်မှုများ (Strengths):',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF065F46)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: (latestSummary['strengths_my'] as List).map((s) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: Text(
+                      '✓ $s',
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF047857)),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Areas for Help Section
+            if (latestSummary['areas_for_help_my'] != null && (latestSummary['areas_for_help_my'] as List).isNotEmpty) ...[
+              Row(
+                children: [
+                  const Icon(Icons.help_outline_rounded, size: 14, color: Color(0xFFD97706)),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'အိမ်တွင်း ကူညီအားပေးရန် (Support Needed):',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF92400E)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: (latestSummary['areas_for_help_my'] as List).map((a) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: Text(
+                      '• $a',
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Recommended Offline Home Activities
+            if (latestSummary['recommended_home_activities'] != null &&
+                (latestSummary['recommended_home_activities'] as List).isNotEmpty) ...[
+              const Text(
+                'အကြံပြုထားသော အိမ်တွင်း လေ့ကျင့်ခန်းများ (Offline Activities):',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF4338CA)),
+              ),
+              const SizedBox(height: 6),
+              Column(
+                children: (latestSummary['recommended_home_activities'] as List).map((act) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFC7D2FE)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.home_outlined, size: 16, color: Color(0xFF4F46E5)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    act['title_my'] ?? act['title'] ?? 'Home Activity',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF312E81)),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFFA5B4FC)),
+                                    ),
+                                    child: Text(
+                                      '${act['duration_minutes'] ?? 15} မိနစ်',
+                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF4338CA)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                act['description_my'] ?? act['description'] ?? '',
+                                style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'အပတ်စဉ် အကျဉ်းချုပ်များကို အပတ်စဉ် သောကြာ/တနင်္ဂနွေနေ့တိုင်း အလိုအလျောက် ထုတ်ပြန်ပေးပါသည်။',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 6),
+                  TextButton.icon(
+                    onPressed: () => _loadChildSummariesAndAppeals(child.id),
+                    icon: const Icon(Icons.refresh, size: 14),
+                    label: const Text('စစ်ဆေးရန် ပြန်လည်ရယူပါ (Check Updates)', style: TextStyle(fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordAppealsBanner(GuardianChild child) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.gavel_rounded, size: 20, color: Color(0xFFEA580C)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Record Appeal Mechanism (ကန့်ကွက်စိစစ်ခွင့်)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF9A3412)),
+                    ),
+                    Text(
+                      'Contest or request review for attendance, marks, or whole-child entries',
+                      style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              if (_loadingAppeals)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFEA580C)),
+                  ),
+                )
+              else
+                ElevatedButton.icon(
+                  onPressed: () => _showAppealDialog(child),
+                  icon: const Icon(Icons.add_comment_outlined, size: 14),
+                  label: const Text('Contest Entry', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEA580C),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+            ],
+          ),
+
+          // Show existing appeals for this child
+          if (_childAppeals.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            Text(
+              'Your Submitted Appeals for ${child.fullName} (${_childAppeals.length}):',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+            ),
+            const SizedBox(height: 8),
+            ..._childAppeals.map((appeal) {
+              final status = appeal['status'] as String? ?? 'pending';
+              Color statusColor = Colors.amber.shade800;
+              Color statusBg = Colors.amber.shade50;
+              if (status == 'approved') {
+                statusColor = Colors.green.shade800;
+                statusBg = Colors.green.shade50;
+              } else if (status == 'rejected') {
+                statusColor = Colors.red.shade800;
+                statusBg = Colors.red.shade50;
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          appeal['target_item_title'] ?? 'Record Entry',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: statusBg,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            status.toUpperCase(),
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: statusColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Reason: ${appeal['contested_reason'] ?? ''}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                    ),
+                    if (appeal['resolution_notes'] != null && (appeal['resolution_notes'] as String).isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Text(
+                          'Staff Resolution: ${appeal['resolution_notes']}',
+                          style: const TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: Color(0xFF0F172A)),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showAppealDialog(GuardianChild child) {
+    String recordType = 'attendance';
+    final targetItemCtrl = TextEditingController();
+    final currentValueCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
+    final requestedCorrectionCtrl = TextEditingController();
+    final evidenceCtrl = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.gavel_rounded, color: Color(0xFFEA580C), size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Record Appeal: ${child.fullName}',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Under school data governance rules, you may formally contest recorded attendance, exam scores, or whole-child assessments.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 12),
+
+                // Record Type Dropdown
+                const Text('Record Category (ကဏ္ဍ):', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                    value: recordType,
+                    items: const [
+                      DropdownMenuItem(value: 'attendance', child: Text('Attendance (ကျောင်းခေါ်ချိန်)', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'exam_marks', child: Text('Exam Marks (စာမေးပွဲရမှတ်)', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'whole_child', child: Text('Whole-Child Assessment (ဘက်စုံဖွံ့ဖြိုးမှု)', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'social_participation', child: Text('Social Participation (လူမှုပါဝင်မှု)', style: TextStyle(fontSize: 12))),
+                    ],
+                    onChanged: (val) => setDialogState(() => recordType = val ?? recordType),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Target Item Title
+                const Text('Target Item / Subject (အကြောင်းအရာ/ဘာသာရပ်):', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: targetItemCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Oct 14 Attendance or Grade 5 Math Midterm',
+                    hintStyle: const TextStyle(fontSize: 11),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+
+                // Current Value vs Requested Correction
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Current Value:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: currentValueCtrl,
+                            decoration: InputDecoration(
+                              hintText: 'e.g. Absent / 62',
+                              hintStyle: const TextStyle(fontSize: 11),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Requested Correction:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: requestedCorrectionCtrl,
+                            decoration: InputDecoration(
+                              hintText: 'e.g. Present (Medical) / 72',
+                              hintStyle: const TextStyle(fontSize: 11),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Contested Reason
+                const Text('Reason for Contestation (ကန့်ကွက်ရသည့် အကြောင်းရင်း) *:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: reasonCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'Explain why this entry is incorrect...',
+                    hintStyle: const TextStyle(fontSize: 11),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+
+                // Supporting Evidence Notes
+                const Text('Supporting Evidence / Notes (အထောက်အထား မှတ်ချက်):', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: evidenceCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Gate pass timestamp recorded, medical slip attached.',
+                    hintStyle: const TextStyle(fontSize: 11),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (targetItemCtrl.text.trim().isEmpty || reasonCtrl.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please fill in the target item and contested reason.')),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isSubmitting = true);
+                      try {
+                        await ApiService.submitAppeal(
+                          studentId: child.id,
+                          recordType: recordType,
+                          targetItemTitle: targetItemCtrl.text.trim(),
+                          contestedReason: reasonCtrl.text.trim(),
+                          currentValue: currentValueCtrl.text.trim(),
+                          requestedCorrection: requestedCorrectionCtrl.text.trim(),
+                          evidenceNotes: evidenceCtrl.text.trim(),
+                        );
+
+                        if (context.mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              backgroundColor: Color(0xFF047857),
+                              content: Text('Appeal submitted successfully! School administration notified.'),
+                            ),
+                          );
+                          _loadChildSummariesAndAppeals(child.id);
+                        }
+                      } catch (err) {
+                        setDialogState(() => isSubmitting = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(backgroundColor: Colors.red.shade800, content: Text(err.toString())),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEA580C),
+                foregroundColor: Colors.white,
+              ),
+              child: isSubmitting
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Submit Appeal', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
       ),
     );
   }
