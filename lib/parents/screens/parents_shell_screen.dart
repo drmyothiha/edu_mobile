@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/update_dialog.dart';
 import '../../screens/student_wallet_screen.dart';
 import '../../screens/notifications_screen.dart';
 import 'guardian_dashboard_screen.dart';
@@ -143,6 +144,11 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.system_update_alt, color: Colors.white, size: 21),
+                    tooltip: 'Check for Updates (အပ်ဒိတ် စစ်ဆေးမည်)',
+                    onPressed: () => UpdateDialog.show(context),
                   ),
                   IconButton(
                     icon: const Icon(Icons.switch_account_outlined, color: Colors.white, size: 22),

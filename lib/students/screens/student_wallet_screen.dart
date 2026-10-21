@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/verifiable_credential.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../widgets/update_dialog.dart';
 import '../../theme/app_theme.dart';
 import '../../screens/login_screen.dart';
 
@@ -311,9 +312,21 @@ class _StudentWalletScreenState extends State<StudentWalletScreen> {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 ).then((_) => _loadCredential());
+              } else if (val == 'update') {
+                UpdateDialog.show(context);
               }
             },
             itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'update',
+                child: Row(
+                  children: [
+                    Icon(Icons.system_update_alt, size: 18, color: Color(0xFF10B981)),
+                    SizedBox(width: 8),
+                    Text('Check for Updates (အပ်ဒိတ်)'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'inspect',
                 child: Row(

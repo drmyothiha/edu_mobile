@@ -5,6 +5,7 @@ class AppRoutes {
   static const String initial = '/';
   static const String login = '/login';
   static const String settings = '/settings';
+  static const String update = '/update';
   static const String teacher = '/teacher';
   static const String parents = '/parents';
   static const String students = '/students';

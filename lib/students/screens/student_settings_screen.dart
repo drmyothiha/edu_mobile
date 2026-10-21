@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
 import '../../services/timetable_storage_service.dart';
+import '../../widgets/update_dialog.dart';
 import '../../screens/server_settings_screen.dart';
 
 /// Student Settings and Standards Profile Screen.
@@ -426,30 +427,54 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                   'Department of Basic Education (DBE)',
                 ),
                 const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF4C8DFF),
-                      side: const BorderSide(color: Color(0xFF2E344A)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF10B981),
+                          side: const BorderSide(color: Color(0xFF059669)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: const Icon(Icons.system_update_alt, size: 16),
+                        label: const Text(
+                          'Check Updates',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          UpdateDialog.show(context);
+                        },
                       ),
                     ),
-                    icon: const Icon(Icons.article_outlined, size: 16),
-                    label: const Text(
-                      'Open Source Licenses',
-                      style: TextStyle(fontSize: 12),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF4C8DFF),
+                          side: const BorderSide(color: Color(0xFF2E344A)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: const Icon(Icons.article_outlined, size: 16),
+                        label: const Text(
+                          'Licenses',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          showLicensePage(
+                            context: context,
+                            applicationName: 'Myanmar AI Education Hub',
+                            applicationVersion: '1.0.0 (2026)',
+                          );
+                        },
+                      ),
                     ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      showLicensePage(
-                        context: context,
-                        applicationName: 'Myanmar AI Education Hub',
-                        applicationVersion: '1.0.0 (2026)',
-                      );
-                    },
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -997,6 +1022,54 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                                 SizedBox(height: 2),
                                 Text(
                                   'ဗားရှင်း 1.0.0 (Build 2026.09) • ကလေးသူငယ် ဘေးကင်းလုံခြုံရေး လိုက်နာမှု',
+                                  style: TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: Color(0xFF64748B),
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Divider(color: Color(0xFF1E2028), height: 1),
+                  InkWell(
+                    onTap: () => UpdateDialog.show(context),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.system_update_alt,
+                            color: Color(0xFF10B981),
+                            size: 20,
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Check for Updates (ဆော့ဖ်ဝဲလ် အဆင့်မြှင့်တင်ရန်)',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Check GitHub Releases for new APK updates',
                                   style: TextStyle(
                                     color: Color(0xFF94A3B8),
                                     fontSize: 11,

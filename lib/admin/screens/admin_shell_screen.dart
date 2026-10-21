@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/storage_service.dart';
+import '../../widgets/update_dialog.dart';
 import '../../theme/app_theme.dart';
 import 'kiosk_pairing_scanner_screen.dart';
 
@@ -58,6 +59,11 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.system_update_alt, color: AppTheme.primary),
+            tooltip: 'Check for Updates (ဆော့ဖ်ဝဲလ် အဆင့်မြှင့်တင်မည်)',
+            onPressed: () => UpdateDialog.show(context),
+          ),
           IconButton(
             icon: const Icon(Icons.swap_horiz, color: AppTheme.primary),
             tooltip: 'Switch Role (ကဏ္ဍပြောင်းရန်)',
@@ -274,6 +280,50 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   ),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Software Update Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.system_update_alt, color: Color(0xFF059669), size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Software Update (စနစ်အဆင့်မြှင့်တင်ခြင်း)',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Check and install latest mobile build from CI/CD',
+                          style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => UpdateDialog.show(context),
+                    child: const Text('Check'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

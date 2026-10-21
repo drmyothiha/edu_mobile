@@ -13,6 +13,8 @@ import '../students/screens/student_shell_screen.dart';
 import '../students/screens/student_under13_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/server_settings_screen.dart';
+import '../screens/update_screen.dart';
+import '../widgets/update_dialog.dart';
 import '../screens/student_wallet_screen.dart';
 import '../screens/gate_verifier_screen.dart';
 import '../screens/classroom_sync_screen.dart';
@@ -56,6 +58,14 @@ class AppRouter {
       return MaterialPageRoute(
         settings: settings,
         builder: (_) => const ServerSettingsScreen(),
+      );
+    }
+
+    // 4c. Software Updates route
+    if (name == AppRoutes.update) {
+      return MaterialPageRoute(
+        settings: settings,
+        builder: (_) => const UpdateScreen(),
       );
     }
 
@@ -213,6 +223,14 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton.icon(
+                      icon: const Icon(Icons.system_update_alt, size: 16),
+                      label: const Text('Check for Updates'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        UpdateDialog.show(context);
+                      },
+                    ),
+                    TextButton.icon(
                       icon: const Icon(Icons.apps),
                       label: const Text('All-in-One Multi View'),
                       onPressed: () async {
@@ -221,18 +239,22 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
                         _resolveAuthRole();
                       },
                     ),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.login),
-                      label: const Text('Sign In / Custom'),
-                      onPressed: () async {
-                        Navigator.pop(ctx);
-                        final res = await Navigator.pushNamed<bool>(context, AppRoutes.login);
-                        if (res == true) {
-                          _resolveAuthRole();
-                        }
-                      },
-                    ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.login),
+                    label: const Text('Sign In / Custom'),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final res = await Navigator.pushNamed<bool>(context, AppRoutes.login);
+                      if (res == true) {
+                        _resolveAuthRole();
+                      }
+                    },
+                  ),
                 ),
               ],
             ),

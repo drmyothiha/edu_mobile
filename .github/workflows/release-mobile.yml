@@ -1,0 +1,103 @@
+name: Release Mobile Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Release Tag (e.g. v1.0.0 or V1.0.0)'
+        required: true
+        default: 'v1.0.0'
+        type: string
+  push:
+    tags:
+      - '[vV][0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  build-and-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java Development Kit (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Determine Version
+        id: version_step
+        run: |
+          RAW_TAG="${{ github.event.inputs.version_tag || github.ref_name }}"
+          CLEAN_VERSION="${RAW_TAG#v}"
+          CLEAN_VERSION="${CLEAN_VERSION#V}"
+          echo "RELEASE_TAG=${RAW_TAG}" >> $GITHUB_ENV
+          echo "VERSION=${CLEAN_VERSION}" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Build Android Release APK
+        run: |
+          flutter build apk --release --build-name=${{ env.VERSION }} --build-number=${{ env.BUILD_NUMBER }}
+
+      - name: Prepare Release Artifacts
+        run: |
+          mkdir -p release-artifacts
+          APK_SOURCE="build/app/outputs/flutter-apk/app-release.apk"
+          APK_NAME="edu_mobile-${{ env.RELEASE_TAG }}.apk"
+          cp "${APK_SOURCE}" "release-artifacts/${APK_NAME}"
+
+          # Compute file size and SHA256 checksum
+          cd release-artifacts
+          sha256sum "${APK_NAME}" > checksums-sha256.txt
+          APK_SIZE=$(wc -c < "${APK_NAME}" | tr -d ' ')
+          cd ..
+
+          # Generate updater/version manifest JSON (mirroring updater.json in desktop)
+          cat <<EOF > release-artifacts/version.json
+          {
+            "version": "${{ env.VERSION }}",
+            "tag_name": "${{ env.RELEASE_TAG }}",
+            "build_number": ${{ env.BUILD_NUMBER }},
+            "release_name": "AugmentEd Mobile ${{ env.RELEASE_TAG }}",
+            "apk_name": "${APK_NAME}",
+            "apk_size": ${APK_SIZE},
+            "download_url": "https://github.com/drmyothiha/edu_mobile/releases/download/${{ env.RELEASE_TAG }}/${APK_NAME}",
+            "published_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: 'AugmentEd Mobile ${{ env.RELEASE_TAG }}'
+          body: |
+            ## AugmentEd Mobile Release ${{ env.RELEASE_TAG }}
+
+            ### Automated Android Build (Universal APK)
+            - Android Release APK (`edu_mobile-${{ env.RELEASE_TAG }}.apk`)
+            - Mobile Auto-Updater Manifest (`version.json`)
+            - SHA256 Verification Checksums (`checksums-sha256.txt`)
+
+            Built with GitHub Actions CI/CD.
+          draft: false
+          prerelease: false
+          files: |
+            release-artifacts/edu_mobile-${{ env.RELEASE_TAG }}.apk
+            release-artifacts/version.json
+            release-artifacts/checksums-sha256.txt

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/storage_service.dart';
+import '../services/update_service.dart';
+import '../widgets/update_dialog.dart';
 import '../theme/app_theme.dart';
 
 /// Screen for configuring and testing the backend server IP or URL.
@@ -139,6 +141,11 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
       appBar: AppBar(
         title: const Text('Server Configuration (ဆာဗာချိန်ညှိမှု)'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.system_update_alt),
+            tooltip: 'Check for Updates (အပ်ဒိတ်စစ်ဆေးမည်)',
+            onPressed: () => UpdateDialog.show(context),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Reset to Default (136.85.95.216)',
@@ -385,9 +392,109 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                       onPressed: _resetToDefault,
                     ),
                   ),
+
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+
+                  // Software Update Card
+                  _buildSoftwareUpdateSection(),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildSoftwareUpdateSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.system_update_alt,
+                  color: AppTheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Software Updates (ဆော့ဖ်ဝဲလ် အဆင့်မြှင့်တင်ခြင်း)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'Check GitHub Releases for new APK updates',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              FutureBuilder<String>(
+                future: UpdateService.getCurrentAppVersion(),
+                builder: (context, snapshot) {
+                  final version = snapshot.data ?? '1.0.0';
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Text(
+                      'Installed: v$version',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textMain,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Check for Updates'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => UpdateDialog.show(context),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

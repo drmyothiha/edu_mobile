@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/update_dialog.dart';
 import '../../screens/notifications_screen.dart';
 import 'gate_verifier_screen.dart';
 import 'classroom_sync_screen.dart';
@@ -151,6 +152,11 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.system_update_alt, color: Colors.white, size: 21),
+                    tooltip: 'Check for Updates (အပ်ဒိတ် စစ်ဆေးမည်)',
+                    onPressed: () => UpdateDialog.show(context),
                   ),
                   IconButton(
                     icon: const Icon(Icons.history, color: Colors.white, size: 22),

@@ -5,6 +5,7 @@ import '../services/storage_service.dart';
 import '../services/jwt_decoder.dart';
 import '../services/nfc_auth_service.dart';
 import '../routes/app_routes.dart';
+import '../widgets/update_dialog.dart';
 import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -398,6 +399,11 @@ class _LoginScreenState extends State<LoginScreen>
       appBar: AppBar(
         title: const Text('AugmentEd Portal Login'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.system_update_alt),
+            tooltip: 'Check for Updates (အပ်ဒိတ် စစ်ဆေးမည်)',
+            onPressed: () => UpdateDialog.show(context),
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Server Settings (ဆာဗာချိန်ညှိမှု)',
