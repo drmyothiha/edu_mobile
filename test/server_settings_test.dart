@@ -14,27 +14,27 @@ void main() {
 
   group('Server URL Normalization & Storage Tests', () {
     test(
-      'defaultServerUrl defaults to production IP 136.85.95.216 with HTTPS',
+      'defaultServerUrl defaults to production IP 104.154.135.208 with HTTPS',
       () {
         expect(
           StorageService.defaultServerUrl,
-          equals('https://136.85.95.216'),
+          equals('https://104.154.135.208'),
         );
       },
     );
 
     test('normalizeServerUrl handles various formats', () {
       expect(
-        StorageService.normalizeServerUrl('136.85.95.216'),
-        equals('https://136.85.95.216'),
+        StorageService.normalizeServerUrl('104.154.135.208'),
+        equals('https://104.154.135.208'),
       );
       expect(
-        StorageService.normalizeServerUrl('136.85.95.216/'),
-        equals('https://136.85.95.216'),
+        StorageService.normalizeServerUrl('104.154.135.208/'),
+        equals('https://104.154.135.208'),
       );
       expect(
-        StorageService.normalizeServerUrl('https://136.85.95.216/api/v1'),
-        equals('https://136.85.95.216'),
+        StorageService.normalizeServerUrl('https://104.154.135.208/api/v1'),
+        equals('https://104.154.135.208'),
       );
       expect(
         StorageService.normalizeServerUrl('10.0.2.2:8080'),
@@ -51,9 +51,9 @@ void main() {
     });
 
     test('setServerUrl and getServerUrl persist normalized URL', () async {
-      await StorageService.setServerUrl('136.85.95.216');
+      await StorageService.setServerUrl('104.154.135.208');
       final saved = await StorageService.getServerUrl();
-      expect(saved, equals('https://136.85.95.216'));
+      expect(saved, equals('https://104.154.135.208'));
 
       await StorageService.setServerUrl('192.168.1.20:8080');
       final updated = await StorageService.getServerUrl();
@@ -61,7 +61,7 @@ void main() {
 
       await StorageService.resetServerUrl();
       final reset = await StorageService.getServerUrl();
-      expect(reset, equals('https://136.85.95.216'));
+      expect(reset, equals('https://104.154.135.208'));
     });
   });
 
@@ -69,7 +69,7 @@ void main() {
     testWidgets('renders ServerSettingsScreen and loads initial URL', (
       tester,
     ) async {
-      await StorageService.setServerUrl('https://136.85.95.216');
+      await StorageService.setServerUrl('https://104.154.135.208');
 
       await tester.pumpWidget(const MaterialApp(home: ServerSettingsScreen()));
 
@@ -83,7 +83,7 @@ void main() {
       expect(find.text('Save & Apply Settings (သိမ်းဆည်းမည်)'), findsOneWidget);
 
       final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.controller?.text, equals('https://136.85.95.216'));
+      expect(textField.controller?.text, equals('https://104.154.135.208'));
     });
 
     testWidgets('tapping preset updates text field', (tester) async {

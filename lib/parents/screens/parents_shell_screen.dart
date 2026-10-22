@@ -3,15 +3,13 @@ import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/update_dialog.dart';
-import '../../screens/student_wallet_screen.dart';
 import '../../screens/notifications_screen.dart';
 import 'guardian_dashboard_screen.dart';
 
 /// Dedicated Parents / Guardian Shell Screen & UI container.
 /// Hosts Parent-specific workflows:
 /// 1. Children Multi-Child Overview & 5-Pillar Growth Dashboard
-/// 2. Verifiable Credential W3C Digital Pass for Under-13 Children
-/// 3. Direct Teacher Chat & School Announcement Broadcasts
+/// 2. Direct Teacher Chat & School Announcement Broadcasts
 class ParentsShellScreen extends StatefulWidget {
   final int initialTab;
   final VoidCallback? onSwitchRole;
@@ -34,7 +32,7 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialTab;
+    _currentIndex = widget.initialTab.clamp(0, 1);
     _loadGuardianProfile();
   }
 
@@ -69,115 +67,39 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
       );
     }
 
-    final parentName = _guardianUser?.fullName.isNotEmpty == true
-        ? _guardianUser!.fullName
-        : 'Daw Khin Mar (ဒေါ်ခင်မာ)';
+    final parentName = _guardianUser?.fullName ?? '';
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppTheme.primary,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: AppTheme.primary,
+        elevation: 2,
+        title: Text(
+          parentName.isNotEmpty ? parentName : 'Guardian Portal',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    radius: 18,
-                    child: const Icon(Icons.family_restroom, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                parentName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'GUARDIAN',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Text(
-                          'မိဘ / အုပ်ထိန်းသူ • Guardian Portal',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.system_update_alt, color: Colors.white, size: 21),
-                    tooltip: 'Check for Updates (အပ်ဒိတ် စစ်ဆေးမည်)',
-                    onPressed: () => UpdateDialog.show(context),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.switch_account_outlined, color: Colors.white, size: 22),
-                    tooltip: 'Switch Role (RBAC)',
-                    onPressed: widget.onSwitchRole,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.white, size: 20),
-                    tooltip: 'Sign Out',
-                    onPressed: _handleSignOut,
-                  ),
-                ],
-              ),
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          Builder(
+            builder: (ctx) => IconButton(
+              icon: const Icon(Icons.menu, color: Colors.white),
+              tooltip: 'Menu',
+              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
             ),
           ),
-        ),
+        ],
       ),
+      endDrawer: _buildSidebar(context, parentName),
       body: IndexedStack(
         index: _currentIndex,
         children: [
           GuardianDashboardScreen(
             onNavigateTab: (idx) => _onTabTapped(idx),
             onSwitchRole: widget.onSwitchRole,
-          ),
-          StudentWalletScreen(
-            onSwitchMode: widget.onSwitchRole ?? () {},
-            isGuardianView: true,
-            childName: 'Ma Su Myat Noe',
-            gradeLevel: 'Grade 5-A',
           ),
           NotificationsScreen(onSwitchMode: widget.onSwitchRole),
         ],
@@ -193,12 +115,6 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
         activeIcon: Icons.family_restroom,
         label: 'Children',
         subtitle: 'Dashboard',
-      ),
-      _ParentNavItem(
-        icon: Icons.wallet_outlined,
-        activeIcon: Icons.wallet,
-        label: 'Child Pass',
-        subtitle: 'W3C VC',
       ),
       _ParentNavItem(
         icon: Icons.chat_bubble_outline,
@@ -285,6 +201,58 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
             }),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSidebar(BuildContext context, String parentName) {
+    return Drawer(
+      child: Column(
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: const BoxDecoration(
+              color: AppTheme.primary,
+            ),
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              child: const Icon(Icons.family_restroom, color: Colors.white, size: 36),
+            ),
+            accountName: Text(
+              parentName.isNotEmpty ? parentName : 'Guardian (မိဘ/အုပ်ထိန်းသူ)',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            accountEmail: Text(
+              _guardianUser?.email.isNotEmpty == true
+                  ? _guardianUser!.email
+                  : 'မိဘ / အုပ်ထိန်းသူ • Guardian Portal',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.system_update_alt, color: AppTheme.primary),
+            title: const Text('Check for Updates'),
+            subtitle: const Text('အပ်ဒိတ် စစ်ဆေးမည်'),
+            onTap: () {
+              Navigator.pop(context);
+              UpdateDialog.show(context);
+            },
+          ),
+          const Divider(),
+          const Spacer(),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.redAccent),
+            title: const Text(
+              'Sign Out (အကောင့်ထွက်မည်)',
+              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              _handleSignOut();
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }

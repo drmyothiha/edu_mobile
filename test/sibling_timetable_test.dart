@@ -28,7 +28,7 @@ void main() {
       );
 
       // Verify KG subjects
-      expect(kgPeriods.any((p) => p.subjectCode.contains('KG-MYAN')), isTrue);
+      expect(kgPeriods.any((p) => p.subjectCode.contains('KG-SPK')), isTrue);
       expect(kgPeriods.any((p) => p.subjectCode.contains('KG-ART')), isTrue);
       expect(kgPeriods.first.studentId, 'stu-kg-001');
 
@@ -81,11 +81,11 @@ void main() {
       );
 
       // Verify separation: Sibling A has KG subjects, Sibling B has Grade 5 subjects
-      expect(loadedA.any((p) => p.subjectCode.contains('KG-MYAN')), isTrue);
+      expect(loadedA.any((p) => p.subjectCode.contains('KG-SPK')), isTrue);
       expect(loadedA.any((p) => p.subjectCode.contains('MYAN-5')), isFalse);
 
       expect(loadedB.any((p) => p.subjectCode.contains('MYAN-5')), isTrue);
-      expect(loadedB.any((p) => p.subjectCode.contains('KG-MYAN')), isFalse);
+      expect(loadedB.any((p) => p.subjectCode.contains('KG-SPK')), isFalse);
     });
 
     test('Hot-swapping student via NfcAuthService updates active session context', () async {

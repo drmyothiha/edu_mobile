@@ -15,10 +15,6 @@ import '../screens/login_screen.dart';
 import '../screens/server_settings_screen.dart';
 import '../screens/update_screen.dart';
 import '../widgets/update_dialog.dart';
-import '../screens/student_wallet_screen.dart';
-import '../screens/gate_verifier_screen.dart';
-import '../screens/classroom_sync_screen.dart';
-import '../screens/notifications_screen.dart';
 import 'app_routes.dart';
 
 /// Central application router coordinating namespace-specific role routes.
@@ -97,7 +93,6 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
   AppUser? _currentUser;
   AppUserRole? _jwtRole;
   bool _isLoading = true;
-  int _unauthTabIndex = 0;
 
   @override
   void initState() {
@@ -109,16 +104,12 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
     final token = await StorageService.getToken();
     final jwtRole = JwtDecoder.getRole(token);
     final user = await StorageService.getCurrentUser();
-    final mode = await StorageService.getAppMode();
 
     if (mounted) {
       setState(() {
         _jwtRole = jwtRole ?? user?.role;
         _currentUser = user;
         _isLoading = false;
-        if (user == null && jwtRole == null) {
-          _unauthTabIndex = mode == 'inspector' ? 1 : 0;
-        }
       });
     }
   }
@@ -231,8 +222,8 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
                       },
                     ),
                     TextButton.icon(
-                      icon: const Icon(Icons.apps),
-                      label: const Text('All-in-One Multi View'),
+                      icon: const Icon(Icons.logout),
+                      label: const Text('Sign Out'),
                       onPressed: () async {
                         Navigator.pop(ctx);
                         await StorageService.clearSession();
@@ -382,119 +373,8 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
       case AppUserRole.student:
         return StudentShellScreen(onSwitchRole: _showRoleSwitchDialog);
       case null:
-        // 3. Unauthenticated / Multi-view overview
-        return _buildUnauthenticatedMultiView();
+        // 3. Unauthenticated -> Display standard login screen
+        return const LoginScreen();
     }
   }
-
-  Widget _buildUnauthenticatedMultiView() {
-    final navItems = [
-      _MultiNavItem(Icons.wallet_outlined, Icons.wallet, 'ID Card', 'W3C VC'),
-      _MultiNavItem(Icons.qr_code_scanner_outlined, Icons.qr_code_scanner, 'Kiosk', 'Auto Scan'),
-      _MultiNavItem(Icons.admin_panel_settings_outlined, Icons.admin_panel_settings, 'Admin', 'Gate Setup'),
-      _MultiNavItem(Icons.hub_outlined, Icons.hub, 'Whole-Child', 'Grade 5-A'),
-      _MultiNavItem(Icons.chat_bubble_outline, Icons.chat_bubble, 'Parent Chat', 'Alerts & Chat'),
-    ];
-
-    return Scaffold(
-      body: IndexedStack(
-        index: _unauthTabIndex,
-        children: [
-          StudentWalletScreen(onSwitchMode: _showRoleSwitchDialog),
-          GateVerifierScreen(onSwitchMode: _showRoleSwitchDialog),
-          AdminShellScreen(onSwitchRole: _showRoleSwitchDialog),
-          ClassroomSyncScreen(onSwitchMode: _showRoleSwitchDialog),
-          NotificationsScreen(onSwitchMode: _showRoleSwitchDialog),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey.shade200)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              children: List.generate(navItems.length, (idx) {
-                final item = navItems[idx];
-                final isSelected = _unauthTabIndex == idx;
-                final color = isSelected ? AppTheme.primary : AppTheme.textMuted;
-
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _unauthTabIndex = idx),
-                      behavior: HitTestBehavior.opaque,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.primary.withValues(alpha: 0.08) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected ? AppTheme.primary.withValues(alpha: 0.2) : Colors.transparent,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(isSelected ? item.activeIcon : item.icon, color: color, size: 20),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.label,
-                                    style: TextStyle(
-                                      color: color,
-                                      fontSize: 11,
-                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    item.subtitle,
-                                    style: TextStyle(
-                                      color: isSelected ? AppTheme.primaryLight : Colors.grey.shade500,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MultiNavItem {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final String subtitle;
-
-  _MultiNavItem(this.icon, this.activeIcon, this.label, this.subtitle);
 }

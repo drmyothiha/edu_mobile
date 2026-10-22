@@ -92,9 +92,9 @@ void main() {
       await tester.pumpWidget(const EduMobileApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('Guardian Portal'), findsOneWidget);
+      expect(find.text('Daw Khin Mar'), findsOneWidget);
       expect(find.text('Children'), findsOneWidget);
-      expect(find.text('Child Pass'), findsOneWidget);
+      expect(find.text('Child Pass'), findsNothing);
       expect(find.text('Teacher Chat'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());

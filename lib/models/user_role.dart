@@ -67,6 +67,8 @@ class AppUser {
   final DateTime? dateOfBirth;
   final String? guardianName;
   final String? guardianEmail;
+  final String? photoUrl;
+  final String? avatarUrl;
 
   AppUser({
     required this.id,
@@ -79,6 +81,8 @@ class AppUser {
     this.dateOfBirth,
     this.guardianName,
     this.guardianEmail,
+    this.photoUrl,
+    this.avatarUrl,
   });
 
   /// Calculate user's age in completed years if dateOfBirth is known
@@ -154,6 +158,8 @@ class AppUser {
       dateOfBirth: dob,
       guardianName: json['guardian_name']?.toString(),
       guardianEmail: json['guardian_email']?.toString(),
+      photoUrl: json['photo_url']?.toString() ?? json['photoUrl']?.toString() ?? json['avatar_url']?.toString(),
+      avatarUrl: json['avatar_url']?.toString() ?? json['avatarUrl']?.toString() ?? json['photo_url']?.toString(),
     );
   }
 
@@ -169,6 +175,8 @@ class AppUser {
       if (dateOfBirth != null) 'date_of_birth': dateOfBirth!.toIso8601String(),
       if (guardianName != null) 'guardian_name': guardianName,
       if (guardianEmail != null) 'guardian_email': guardianEmail,
+      if (photoUrl != null) 'photo_url': photoUrl,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
     };
   }
 }

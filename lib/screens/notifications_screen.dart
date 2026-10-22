@@ -509,15 +509,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                   const Divider(height: 1),
                   const SizedBox(height: 8),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Class: ${ann.className}',
-                        style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                      Expanded(
+                        child: Text(
+                          'Class: ${ann.className}',
+                          style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      Text(
-                        'Teacher: ${ann.teacherName}',
-                        style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Teacher: ${ann.teacherName}',
+                          style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),

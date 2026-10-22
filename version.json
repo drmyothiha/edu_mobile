@@ -1,11 +1,11 @@
 {
-  "version": "1.0.0",
-  "tag_name": "v1.0.0",
-  "build_number": 1,
-  "release_name": "AugmentEd Mobile v1.0.0",
-  "apk_name": "edu_mobile-v1.0.0.apk",
+  "version": "1.1.0",
+  "tag_name": "v1.1.0",
+  "build_number": 2,
+  "release_name": "AugmentEd Mobile v1.1.0",
+  "apk_name": "edu_mobile-v1.1.0.apk",
   "apk_size": 31457280,
-  "download_url": "https://github.com/drmyothiha/edu_mobile/releases/download/v1.0.0/edu_mobile-v1.0.0.apk",
-  "release_notes": "Initial release of AugmentEd Mobile Platform. Supports Student W3C VC Wallet, Gate NFC/QR Verifier, Classroom Offline Sync, and Guardian Portal.",
-  "published_at": "2026-10-19T00:00:00Z"
+  "download_url": "https://github.com/drmyothiha/edu_mobile/releases/download/v1.1.0/edu_mobile-v1.1.0.apk",
+  "release_notes": "AugmentEd Mobile v1.1.0: Streamlined Parent Portal navigation (removed standalone middle W3C VC tab, accessible directly via child cards), added Phone/SMS OTP login & parent registration, and updated child profile cards.",
+  "published_at": "2026-10-22T00:00:00Z"
 }

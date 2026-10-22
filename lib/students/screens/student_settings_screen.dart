@@ -25,7 +25,7 @@ class StudentSettingsScreen extends StatefulWidget {
 class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
   AppUser? _user;
   bool _isLoading = true;
-  String _serverUrl = 'https://136.85.95.216';
+  String _serverUrl = 'https://104.154.135.208';
   String _schoolShift = 'full_day';
   DateTime? _lastSyncTime;
   int _cachedPeriodCount = 0;

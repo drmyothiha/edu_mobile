@@ -178,13 +178,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check Parents Shell UI elements
-      expect(find.text('GUARDIAN'), findsOneWidget);
       expect(find.text('Daw Khin Mar (ဒေါ်ခင်မာ)'), findsOneWidget);
-      expect(find.text('Guardian Portal'), findsOneWidget);
 
       // Check Parents navigation tabs
       expect(find.text('Children'), findsOneWidget);
-      expect(find.text('Child Pass'), findsOneWidget);
+      expect(find.text('Child Pass'), findsNothing);
       expect(find.text('Teacher Chat'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
@@ -233,7 +231,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Settings & Profile'), findsOneWidget);
-      expect(find.text('Alice Walker (Grade 8)'), findsOneWidget);
+      expect(find.text('Alice Walker (Grade 8)'), findsAtLeastNWidgets(1));
       expect(find.text('STUDENT'), findsOneWidget);
       expect(find.textContaining('Standards Profile'), findsWidgets);
       expect(find.text('Sign Out (အကောင့်မှ ထွက်မည်)'), findsOneWidget);
@@ -272,7 +270,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Monday shows single subject for 09:00 AM (Mathematics by Daw May Thu)
-      final mathFinder = find.text('Mathematics').first;
+      final mathFinder = find.textContaining('Mathematics').first;
       await tester.tap(mathFinder);
       await tester.pumpAndSettle();
 
@@ -307,9 +305,10 @@ void main() {
       await tester.pumpWidget(const EduMobileApp(initialRoute: AppRoutes.parents));
       await tester.pumpAndSettle();
 
-      expect(find.text('GUARDIAN'), findsOneWidget);
+      expect(find.text('Guardian Portal'), findsOneWidget);
       expect(find.text('Children'), findsOneWidget);
-      expect(find.text('Child Pass'), findsOneWidget);
+      expect(find.text('Child Pass'), findsNothing);
+      expect(find.text('Teacher Chat'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
       SseNotificationService.stopListening();

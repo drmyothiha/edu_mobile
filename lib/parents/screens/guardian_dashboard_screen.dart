@@ -1,6 +1,8 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/guardian_child.dart';
-import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
@@ -24,7 +26,6 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
   List<GuardianChild> _children = [];
   int _selectedChildIndex = 0;
   bool _isLoading = true;
-  AppUser? _guardianUser;
 
   // M03 & M07: Weekly Summaries & Record Appeals State
   final Map<String, List<Map<String, dynamic>>> _weeklySummaries = {};
@@ -38,21 +39,37 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
     _loadGuardianData();
   }
 
-  Future<void> _loadGuardianData() async {
+  Future<void> _loadGuardianData({bool refreshNetwork = true}) async {
     setState(() => _isLoading = true);
-    final user = await StorageService.getCurrentUser();
-    final children = await StorageService.getGuardianChildren();
-    final savedIndex = await StorageService.getSelectedChildIndex();
+    var children = await StorageService.getGuardianChildren();
+    var savedIndex = await StorageService.getSelectedChildIndex();
 
     if (mounted) {
       setState(() {
-        _guardianUser = user;
         _children = children;
         _selectedChildIndex = (savedIndex < children.length) ? savedIndex : 0;
         _isLoading = false;
       });
       if (children.isNotEmpty) {
         _loadChildSummariesAndAppeals(children[_selectedChildIndex].id);
+      }
+    }
+
+    if (refreshNetwork) {
+      try {
+        final serverChildren = await ApiService.getMyChildren();
+        if (mounted && serverChildren.isNotEmpty) {
+          savedIndex = await StorageService.getSelectedChildIndex();
+          setState(() {
+            _children = serverChildren;
+            _selectedChildIndex = (savedIndex < serverChildren.length) ? savedIndex : 0;
+          });
+          if (serverChildren.isNotEmpty) {
+            _loadChildSummariesAndAppeals(serverChildren[_selectedChildIndex].id);
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to refresh guardian children from network: $e');
       }
     }
   }
@@ -125,36 +142,23 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Guardian Portal',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-            ),
-            Text(
-              _guardianUser?.fullName.isNotEmpty == true
-                  ? 'အုပ်ထိန်းသူ: ${_guardianUser!.fullName}'
-                  : 'မိဘ / အုပ်ထိန်းသူ ကဏ္ဍ',
-              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-            ),
-          ],
-        ),
-        actions: [
-          if (widget.onSwitchRole != null)
-            IconButton(
-              icon: const Icon(Icons.swap_horiz),
-              tooltip: 'Switch Role',
-              onPressed: widget.onSwitchRole,
-            ),
-        ],
-      ),
       body: child == null
-          ? const Center(child: Text('No enrolled children found.'))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+          ? RefreshIndicator(
+              onRefresh: () => _loadGuardianData(refreshNetwork: true),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  child: const Center(child: Text('No enrolled children found (ကလေးမှတ်ပုံတင် မတွေ့ရှိပါ)')),
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: () => _loadGuardianData(refreshNetwork: true),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Child Switcher Tabs
@@ -247,6 +251,385 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                 ],
               ),
             ),
+          ),
+    );
+  }
+
+  Widget _buildChildAvatarImage(GuardianChild child) {
+    if (child.photoUrl != null && child.photoUrl!.isNotEmpty) {
+      final url = child.photoUrl!;
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return Image.network(
+          url,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _buildFallbackInitial(child),
+        );
+      } else if (url.startsWith('data:image')) {
+        try {
+          final commaIndex = url.indexOf(',');
+          final base64Str = commaIndex != -1 ? url.substring(commaIndex + 1) : url;
+          return Image.memory(
+            base64Decode(base64Str),
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _buildFallbackInitial(child),
+          );
+        } catch (_) {
+          return _buildFallbackInitial(child);
+        }
+      } else {
+        final file = File(url);
+        if (file.existsSync()) {
+          return Image.file(
+            file,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _buildFallbackInitial(child),
+          );
+        }
+      }
+    }
+    return _buildFallbackInitial(child);
+  }
+
+  Widget _buildFallbackInitial(GuardianChild child) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.white.withValues(alpha: 0.18),
+      alignment: Alignment.center,
+      child: Text(
+        child.fullName.isNotEmpty ? child.fullName[0] : 'S',
+        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source, GuardianChild child) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        await _updateChildPhoto(child, pickedFile.path);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick photo: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateChildPhoto(GuardianChild child, String? newPhotoPath) async {
+    // 1. Immediately update local UI and storage for instant responsive feedback
+    final updatedChild = child.copyWith(photoUrl: newPhotoPath);
+    setState(() {
+      _children[_selectedChildIndex] = updatedChild;
+    });
+    await StorageService.saveGuardianChildren(_children);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(newPhotoPath != null
+                    ? 'Syncing photo to cloud... (ဆာဗာသို့ ပို့ဆောင်နေပါသည်)'
+                    : 'Removing photo... (ဓာတ်ပုံ ဖျက်နေပါသည်)'),
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.primaryDark,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
+    // 2. Sync to Backend & across all apps including desktop
+    try {
+      final res = await ApiService.uploadChildPhoto(child.id, newPhotoPath);
+      final remoteUrl = res['photo_url']?.toString();
+      if (remoteUrl != null && remoteUrl.isNotEmpty && remoteUrl != newPhotoPath) {
+        final syncedChild = child.copyWith(photoUrl: remoteUrl);
+        if (mounted) {
+          setState(() {
+            _children[_selectedChildIndex] = syncedChild;
+          });
+        }
+        await StorageService.saveGuardianChildren(_children);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.cloud_done, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(newPhotoPath != null
+                      ? 'Photo synced across all apps & desktop (စက်အားလုံးသို့ အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ)'
+                      : 'Photo removed from server (ဆာဗာမှ ဖျက်ပြီးပါပြီ)'),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[GuardianDashboard] Photo backend sync error (offline resilient): $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.offline_pin, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text('Saved locally. Will sync to cloud when online. (ဖုန်းထဲတွင် သိမ်းဆည်းထားပြီးဖြစ်ပါသည်)'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.amber.shade800,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPhotoOptions(GuardianChild child) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                    child: const Icon(Icons.add_a_photo, color: AppTheme.primary, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${child.fullName}\'s Photo',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Text(
+                          'Select or take a photo for your child (ကလေးဓာတ်ပုံ ရွေးချယ်ပါ)',
+                          style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt, color: Colors.blue, size: 22),
+                ),
+                title: const Text('Take Photo with Camera', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('ကင်မရာဖြင့် အသစ်ရိုက်ယူမည်', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.camera, child);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library, color: Colors.purple, size: 22),
+                ),
+                title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('ဖုန်းထဲရှိ ဓာတ်ပုံရွေးချယ်မည်', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.gallery, child);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.face, color: Colors.teal, size: 22),
+                ),
+                title: const Text('Choose Preset Avatar', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('ကျောင်းသားပုံစံ ကာတွန်းပုံများမှ ရွေးမည်', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showPresetAvatarSheet(child);
+                },
+              ),
+              if (child.photoUrl != null && child.photoUrl!.isNotEmpty) ...[
+                const Divider(),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
+                  ),
+                  title: const Text('Remove Photo', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('လက်ရှိဓာတ်ပုံကို ဖျက်မည်', style: TextStyle(fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _updateChildPhoto(child, null);
+                  },
+                ),
+              ],
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPresetAvatarSheet(GuardianChild child) {
+    final avatarUrls = [
+      'https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&fit=crop',
+      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&fit=crop',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&fit=crop',
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&fit=crop',
+      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&fit=crop',
+      'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=200&fit=crop',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Choose Student Avatar (ကျောင်းသား ပုံရွေးပါ)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Select a profile picture for your child',
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+              ),
+              const SizedBox(height: 18),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 1,
+                ),
+                itemCount: avatarUrls.length,
+                itemBuilder: (context, index) {
+                  final url = avatarUrls[index];
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _updateChildPhoto(child, url);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: Image.network(
+                          url,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const Icon(Icons.person, size: 36),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -273,12 +656,56 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                child: Text(
-                  child.fullName.isNotEmpty ? child.fullName[0] : 'S',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+              GestureDetector(
+                onTap: () => _showPhotoOptions(child),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: _buildChildAvatarImage(child),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -5,
+                      right: -5,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryLight,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 11,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 14),
@@ -286,17 +713,49 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      child.fullName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            child.fullName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => _showPhotoOptions(child),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.add_a_photo, size: 10, color: Colors.white),
+                                const SizedBox(width: 3),
+                                Text(
+                                  child.photoUrl != null ? 'Edit' : 'Add Photo',
+                                  style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${child.gradeLevel} • Roll: ${child.rollNo}',
+                      child.rollNo.isNotEmpty
+                          ? '${child.gradeLevel} • Roll: ${child.rollNo}'
+                          : child.className.isNotEmpty
+                              ? '${child.gradeLevel} • ${child.className}'
+                              : child.gradeLevel,
                       style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.9)),
                     ),
                     Text(
@@ -313,8 +772,11 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
           const SizedBox(height: 14),
           const Divider(color: Colors.white24, height: 1),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1099,10 +1561,13 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Whole-Child Academic & Attendance',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+              const Expanded(
+                child: Text(
+                  'Whole-Child Academic & Attendance',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -1319,8 +1784,8 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
           ElevatedButton(
             onPressed: () {
               if (widget.onNavigateTab != null) {
-                // Navigate to the Chat/Communications tab (index 2 for Guardian)
-                widget.onNavigateTab!(2);
+                // Navigate to the Chat/Communications tab (index 1 for Guardian)
+                widget.onNavigateTab!(1);
               }
             },
             style: ElevatedButton.styleFrom(
@@ -1541,7 +2006,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('Student: ${child.fullName}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-                          Text('Roll: ${child.rollNo}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                          Text(child.rollNo.isNotEmpty ? 'Roll: ${child.rollNo}' : (child.className.isNotEmpty ? child.className : child.gradeLevel), style: const TextStyle(color: Colors.white70, fontSize: 12)),
                         ],
                       ),
                       Text('Class: ${child.gradeLevel}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
@@ -1907,7 +2372,7 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('Student: ${child.fullName}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-                          Text('Age: ${child.age} yrs • Roll: ${child.rollNo}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                          Text('Age: ${child.age} yrs${child.rollNo.isNotEmpty ? " • Roll: ${child.rollNo}" : ""}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                         ],
                       ),
                       Text('Class: ${child.className} • Section A', style: const TextStyle(color: Colors.white70, fontSize: 11)),
@@ -2237,9 +2702,11 @@ class _GuardianDashboardScreenState extends State<GuardianDashboardScreen> {
             children: [
               Icon(Icons.privacy_tip_outlined, color: Colors.red.shade700, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Child Data Privacy & Protection (ကလေးအချက်အလက် စီမံခန့်ခွဲမှု)',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.red.shade900),
+              Expanded(
+                child: Text(
+                  'Child Data Privacy & Protection (ကလေးအချက်အလက် စီမံခန့်ခွဲမှု)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.red.shade900),
+                ),
               ),
             ],
           ),

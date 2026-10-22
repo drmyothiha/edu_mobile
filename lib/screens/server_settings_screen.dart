@@ -21,7 +21,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
   String? _testResult;
   bool _testSuccess = false;
 
-  static const String defaultUrl = 'https://136.85.95.216';
+  static const String defaultUrl = 'https://104.154.135.208';
 
   @override
   void initState() {
@@ -128,7 +128,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Reset to default production IP: 136.85.95.216'),
+          content: Text('Reset to default production IP: 104.154.135.208'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -148,7 +148,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Reset to Default (136.85.95.216)',
+            tooltip: 'Reset to Default (104.154.135.208)',
             onPressed: _resetToDefault,
           ),
         ],
@@ -226,7 +226,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                     controller: _urlController,
                     keyboardType: TextInputType.url,
                     decoration: InputDecoration(
-                      hintText: 'e.g. 136.85.95.216 or https://136.85.95.216',
+                      hintText: 'e.g. 104.154.135.208 or https://104.154.135.208',
                       prefixIcon: const Icon(Icons.link, size: 20),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.clear, size: 18),
@@ -236,7 +236,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       helperText:
-                          'You can enter plain IP "136.85.95.216" or full URL "https://136.85.95.216"',
+                          'You can enter plain IP "104.154.135.208" or full URL "https://104.154.135.208"',
                       helperStyle: const TextStyle(fontSize: 11),
                     ),
                   ),
@@ -263,7 +263,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                           color: Colors.green,
                         ),
                         label: const Text(
-                          'Production Server (136.85.95.216)',
+                          'Production Server (104.154.135.208)',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -385,7 +385,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                     width: double.infinity,
                     child: TextButton.icon(
                       icon: const Icon(Icons.restore, size: 16),
-                      label: const Text('Reset to Default IP (136.85.95.216)'),
+                      label: const Text('Reset to Default IP (104.154.135.208)'),
                       style: TextButton.styleFrom(
                         foregroundColor: AppTheme.textMuted,
                       ),

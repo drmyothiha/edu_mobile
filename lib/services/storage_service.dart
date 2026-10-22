@@ -19,16 +19,16 @@ class StorageService {
   static const String _keyGuardianChildren = 'guardian_cached_children';
 
   // Default server API base URL (Production Server with SSL)
-  static const String productionServerUrl = 'https://136.85.95.216';
+  static const String productionServerUrl = 'https://104.154.135.208';
 
   static String get defaultServerUrl => productionServerUrl;
 
   /// Normalizes user-entered IP or URL into a valid base URL.
   /// Examples:
-  ///   "136.85.95.216" -> "https://136.85.95.216"
+  ///   "104.154.135.208" -> "https://104.154.135.208"
   ///   "10.0.2.2:8080" -> "http://10.0.2.2:8080"
   ///   "http://localhost:8080/" -> "http://localhost:8080"
-  ///   "https://136.85.95.216/api/v1" -> "https://136.85.95.216"
+  ///   "https://104.154.135.208/api/v1" -> "https://104.154.135.208"
   static String normalizeServerUrl(String input) {
     var raw = input.trim();
     if (raw.isEmpty) {
@@ -123,6 +123,8 @@ class StorageService {
     final prefs = await _instance;
     await prefs.setString(_keyToken, token);
     await prefs.setString(_keyUser, json.encode(user));
+    await prefs.remove(_keyGuardianChildren);
+    await prefs.remove(_keySelectedChild);
   }
 
   static Future<String?> getToken() async {
@@ -146,6 +148,8 @@ class StorageService {
     await prefs.remove(_keyToken);
     await prefs.remove(_keyUser);
     await prefs.remove(_keyCachedCredential);
+    await prefs.remove(_keyGuardianChildren);
+    await prefs.remove(_keySelectedChild);
   }
 
   // App User & RBAC Role
@@ -190,13 +194,21 @@ class StorageService {
     if (raw != null) {
       try {
         final list = json.decode(raw) as List<dynamic>;
-        return list
-            .map((e) => GuardianChild.fromJson(e as Map<String, dynamic>))
-            .toList();
+        if (list.isNotEmpty) {
+          return list
+              .map((e) => GuardianChild.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
       } catch (_) {}
     }
 
-    // Default Seed for Children
+    // If an authenticated session exists, do not inject hardcoded demo children
+    final token = await getToken();
+    if (token != null && token.isNotEmpty) {
+      return [];
+    }
+
+    // Default Seed for Children (only in offline/unauthenticated demo mode)
     final defaultChildren = [
       GuardianChild(
         id: 'su.g5@edu.local',
@@ -249,44 +261,13 @@ class StorageService {
       ),
     ];
 
-    await saveGuardianChildren(defaultChildren);
     return defaultChildren;
   }
 
   static Future<void> saveGuardianChildren(List<GuardianChild> children) async {
     final prefs = await _instance;
     final encoded = json.encode(
-      children
-          .map(
-            (c) => {
-              'id': c.id,
-              'full_name': c.fullName,
-              'email': c.email,
-              'roll_no': c.rollNo,
-              'grade_level': c.gradeLevel,
-              'class_name': c.className,
-              'school_name': c.schoolName,
-              'school_code': c.schoolCode,
-              'age': c.age,
-              'national_student_id': c.nationalStudentId,
-              'attendance_rate_pct': c.attendanceRatePct,
-              'sessions_present': c.sessionsPresent,
-              'sessions_absent': c.sessionsAbsent,
-              'term_grade_point': c.termGradePoint,
-              'exam_scores': c.examScores,
-              'calculated_bmi': c.calculatedBmi,
-              'bmi_category': c.bmiCategory,
-              'deworming_completed': c.dewormingCompleted,
-              'vision_check': c.visionCheck,
-              'dominant_emotional_state': c.dominantEmotionalState,
-              'did': c.did,
-              'blockchain_address': c.blockchainAddress,
-              'credential_hash': c.credentialHash,
-              'anchor_status': c.anchorStatus,
-              'raw_credential': c.rawCredential,
-            },
-          )
-          .toList(),
+      children.map((c) => c.toJson()).toList(),
     );
     await prefs.setString(_keyGuardianChildren, encoded);
   }

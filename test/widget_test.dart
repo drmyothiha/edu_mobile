@@ -5,16 +5,17 @@ import 'package:edu_mobile/main.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('EduMobileApp initializes and renders navigation tabs', (WidgetTester tester) async {
+  testWidgets('EduMobileApp initializes and renders login screen when unauthenticated', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
 
     await tester.pumpWidget(const EduMobileApp());
     await tester.pumpAndSettle();
 
-    // Verify presence of Multi-Module Navigation
-    expect(find.text('ID Card'), findsOneWidget);
-    expect(find.text('Kiosk'), findsOneWidget);
-    expect(find.text('Whole-Child'), findsOneWidget);
-    expect(find.text('Parent Chat'), findsOneWidget);
+    // Verify standard login screen elements appear
+    expect(find.text('Log In'), findsOneWidget);
+    expect(find.text('Username or Phone Number'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+    expect(find.text('Forgot password?'), findsOneWidget);
+    expect(find.text('Register'), findsOneWidget);
   });
 }

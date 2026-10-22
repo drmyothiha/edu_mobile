@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -486,7 +487,7 @@ class _StudentWalletScreenState extends State<StudentWalletScreen> {
                                     onTap: () => setState(() => _isFastScanMode = true),
                                     child: AnimatedContainer(
                                       duration: const Duration(milliseconds: 180),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                                       decoration: BoxDecoration(
                                         color: _isFastScanMode ? Colors.white : Colors.transparent,
                                         borderRadius: BorderRadius.circular(10),
@@ -515,7 +516,7 @@ class _StudentWalletScreenState extends State<StudentWalletScreen> {
                                     onTap: () => setState(() => _isFastScanMode = false),
                                     child: AnimatedContainer(
                                       duration: const Duration(milliseconds: 180),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                                       decoration: BoxDecoration(
                                         color: !_isFastScanMode ? Colors.white : Colors.transparent,
                                         borderRadius: BorderRadius.circular(10),
@@ -599,24 +600,56 @@ class _StudentWalletScreenState extends State<StudentWalletScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Student Name & Details
-                          Text(
-                            studentName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'P-Code: $schoolCode • ${_credentialData?['township'] ?? 'Dagon'}',
-                            style: const TextStyle(
-                              color: Color(0xFFA5B4FC),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          // Student Name & Details with Passport Photo
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.white, width: 2.5),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(5.5),
+                                  child: _buildStudentPhotoWidget(studentName),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      studentName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      'P-Code: $schoolCode • ${_credentialData?['township'] ?? 'Dagon'}',
+                                      style: const TextStyle(
+                                        color: Color(0xFFA5B4FC),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
 
@@ -784,6 +817,62 @@ class _StudentWalletScreenState extends State<StudentWalletScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+  Widget _buildStudentPhotoWidget(String studentName) {
+    final photoUrl = _credentialData?['photo_url']?.toString() ??
+        _credentialData?['avatar_url']?.toString();
+
+    if (photoUrl != null && photoUrl.trim().isNotEmpty) {
+      final clean = photoUrl.trim();
+      if (clean.startsWith('http://') || clean.startsWith('https://')) {
+        return Image.network(
+          clean,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _buildFallbackInitial(studentName),
+        );
+      } else if (clean.startsWith('data:')) {
+        try {
+          final commaIndex = clean.indexOf(',');
+          final base64Str = commaIndex != -1 ? clean.substring(commaIndex + 1) : clean;
+          return Image.memory(
+            base64Decode(base64Str),
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _buildFallbackInitial(studentName),
+          );
+        } catch (_) {
+          return _buildFallbackInitial(studentName);
+        }
+      } else {
+        final file = File(clean);
+        if (file.existsSync()) {
+          return Image.file(
+            file,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _buildFallbackInitial(studentName),
+          );
+        }
+      }
+    }
+    return _buildFallbackInitial(studentName);
+  }
+
+  Widget _buildFallbackInitial(String name) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.white.withValues(alpha: 0.2),
+      alignment: Alignment.center,
+      child: Text(
+        name.isNotEmpty ? name[0] : 'S',
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
       ),
     );
   }

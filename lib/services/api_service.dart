@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'storage_service.dart';
 import '../models/verifiable_credential.dart';
@@ -24,6 +26,98 @@ class ApiService {
       return data;
     } else {
       String errMsg = 'Login failed (${response.statusCode})';
+      try {
+        final err = json.decode(response.body);
+        if (err['error'] != null) errMsg = err['error'];
+      } catch (_) {}
+      throw Exception(errMsg);
+    }
+  }
+
+  /// Request mock SMS OTP code for phone-first authentication or registration
+  static Future<Map<String, dynamic>> sendOtp(String phone, {String purpose = 'login'}) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final uri = Uri.parse('$baseUrl/api/v1/auth/otp/send');
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'phone': phone.trim(), 'purpose': purpose}),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      String errMsg = 'Failed to send OTP (${response.statusCode})';
+      try {
+        final err = json.decode(response.body);
+        if (err['error'] != null) errMsg = err['error'];
+      } catch (_) {}
+      throw Exception(errMsg);
+    }
+  }
+
+  /// Log in directly using phone number and verified 6-digit OTP code
+  static Future<Map<String, dynamic>> loginWithOtp(String phone, String otpCode) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final uri = Uri.parse('$baseUrl/api/v1/auth/otp/login');
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'phone': phone.trim(), 'otp_code': otpCode.trim()}),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final token = data['token'] as String;
+      final user = data['user'] as Map<String, dynamic>;
+      await StorageService.saveSession(token: token, user: user);
+      return data;
+    } else {
+      String errMsg = 'OTP Sign-In failed (${response.statusCode})';
+      try {
+        final err = json.decode(response.body);
+        if (err['error'] != null) errMsg = err['error'];
+      } catch (_) {}
+      throw Exception(errMsg);
+    }
+  }
+
+  /// Self-service SaaS registration for parents using phone number alone
+  static Future<Map<String, dynamic>> registerParentSubscription({
+    required String phone,
+    required String password,
+    required String fullName,
+    String? nrcNumber,
+    String planTier = 'basic',
+    String paymentMethod = 'KBZPay',
+    double priceMMK = 0.0,
+  }) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final uri = Uri.parse('$baseUrl/api/v1/parents/register');
+
+    final payload = <String, dynamic>{
+      'phone': phone.trim(),
+      'password': password,
+      'full_name': fullName.trim(),
+      if (nrcNumber != null && nrcNumber.trim().isNotEmpty) 'nrc_number': nrcNumber.trim(),
+      'plan_tier': planTier,
+      'payment_method': paymentMethod,
+      'price_mmk': priceMMK,
+    };
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(payload),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      return data;
+    } else {
+      String errMsg = 'Parent Registration failed (${response.statusCode})';
       try {
         final err = json.decode(response.body);
         if (err['error'] != null) errMsg = err['error'];
@@ -212,20 +306,23 @@ class ApiService {
   }
 
   static Future<List<GuardianChild>> getMyChildren() async {
-    final baseUrl = await StorageService.getServerUrl();
-    final token = await StorageService.getToken();
-    final uri = Uri.parse('$baseUrl/api/v1/parents/my-children');
-    final response = await http.get(uri, headers: {
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    });
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final list = json.decode(response.body) as List<dynamic>;
-      final children = list.map((item) => GuardianChild.fromJson(item as Map<String, dynamic>)).toList();
-      if (children.isNotEmpty) {
+    try {
+      final baseUrl = await StorageService.getServerUrl();
+      final token = await StorageService.getToken();
+      final uri = Uri.parse('$baseUrl/api/v1/parents/my-children');
+      final response = await http.get(uri, headers: {
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      }).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final list = json.decode(response.body) as List<dynamic>;
+        final children = list.map((item) => GuardianChild.fromJson(item as Map<String, dynamic>)).toList();
         await StorageService.saveGuardianChildren(children);
+        return children;
       }
-      return children;
+    } catch (e) {
+      debugPrint('getMyChildren error: $e');
     }
     return StorageService.getGuardianChildren();
   }
@@ -465,6 +562,93 @@ class ApiService {
       return list.cast<Map<String, dynamic>>();
     }
     return [];
+  }
+
+  /// Upload or sync child/student photo across mobile, desktop, and backend database
+  static Future<Map<String, dynamic>> uploadChildPhoto(String studentId, String? photoPathOrUrl) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    if (photoPathOrUrl == null || photoPathOrUrl.trim().isEmpty) {
+      // DELETE photo
+      final uri = Uri.parse('$baseUrl/api/v1/students/$studentId/photo');
+      final response = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 10));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to delete child photo: ${response.statusCode}');
+    }
+
+    final trimmed = photoPathOrUrl.trim();
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+      // Preset URL or Base64 Data URI -> Send JSON payload
+      final uri = Uri.parse('$baseUrl/api/v1/students/$studentId/photo');
+      final jsonHeaders = {
+        ...headers,
+        'Content-Type': 'application/json',
+      };
+      final response = await http.post(
+        uri,
+        headers: jsonHeaders,
+        body: json.encode({'photo_url': trimmed, 'avatar_url': trimmed}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to update photo: ${response.statusCode}');
+    } else {
+      // Local image file path -> upload via MultipartRequest with base64 fallback
+      final file = File(trimmed);
+      if (!await file.exists()) {
+        throw Exception('Photo file not found on device: $trimmed');
+      }
+
+      final uri = Uri.parse('$baseUrl/api/v1/students/$studentId/photo');
+
+      try {
+        final request = http.MultipartRequest('POST', uri);
+        if (token != null) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+        request.files.add(await http.MultipartFile.fromPath('photo', trimmed));
+
+        final streamedResponse = await request.send().timeout(const Duration(seconds: 20));
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return json.decode(response.body) as Map<String, dynamic>;
+        }
+      } catch (e) {
+        debugPrint('[ApiService] Multipart photo upload attempt failed, falling back to Base64 JSON: $e');
+      }
+
+      // Base64 JSON fallback for resilience
+      final bytes = await file.readAsBytes();
+      final ext = trimmed.toLowerCase().endsWith('.png') ? 'png' : 'jpeg';
+      final base64DataUri = 'data:image/$ext;base64,${base64Encode(bytes)}';
+
+      final jsonHeaders = {
+        ...headers,
+        'Content-Type': 'application/json',
+      };
+      final response = await http.post(
+        uri,
+        headers: jsonHeaders,
+        body: json.encode({'photo_url': base64DataUri, 'avatar_url': base64DataUri}),
+      ).timeout(const Duration(seconds: 25));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to upload photo: ${response.statusCode}');
+    }
   }
 }
 
