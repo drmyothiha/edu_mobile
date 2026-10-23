@@ -46,6 +46,7 @@ dependencies:
   nfc_manager: ^4.1.1
   ndef_record: ^1.4.1
   url_launcher: ^6.3.2
+  shorebird_code_push: ^2.0.7
   package_info_plus: ^10.2.2
   image_picker: ^1.2.3
 
@@ -70,6 +71,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - shorebird.yaml
 
   # To add assets to your application, add an assets section, like this:
   # assets:
