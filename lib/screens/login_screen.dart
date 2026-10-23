@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart' as sb;
 import '../models/user_role.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -29,10 +30,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _error;
+  int? _patchNumber;
 
   @override
   void initState() {
     super.initState();
+    _loadShorebirdPatch();
     // Default demo helper if preselected role was provided
     if (widget.preselectedRole == AppUserRole.guardian) {
       _emailController.text = '0922222';
@@ -41,6 +44,18 @@ class _LoginScreenState extends State<LoginScreen> {
       _emailController.text = '0911111';
       _passwordController.text = 'mth';
     }
+  }
+
+  Future<void> _loadShorebirdPatch() async {
+    try {
+      final updater = sb.ShorebirdUpdater();
+      if (updater.isAvailable) {
+        final patch = await updater.readCurrentPatch();
+        if (mounted && patch != null) {
+          setState(() => _patchNumber = patch.number);
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -440,7 +455,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: AppTheme.textMuted,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 6),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.system_update_alt, color: Color(0xFF059669), size: 13),
+                        const SizedBox(width: 4),
+                        Text(
+                          '⚡ OTA Patch #${_patchNumber ?? 1} Active',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF047857),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 // Error Banner
                 if (_error != null) ...[
