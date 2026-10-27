@@ -20,8 +20,10 @@ class StorageService {
 
   // Default server API base URL (Production Server with SSL)
   static const String productionServerUrl = 'https://104.154.135.208';
+  static const String webProductionServerUrl = 'http://104.154.135.208:8080';
 
-  static String get defaultServerUrl => productionServerUrl;
+  static String get defaultServerUrl =>
+      kIsWeb ? webProductionServerUrl : productionServerUrl;
 
   /// Normalizes user-entered IP or URL into a valid base URL.
   /// Examples:
@@ -100,6 +102,9 @@ class StorageService {
       final normalized = saved.replaceAll('10.0.2.2', 'localhost');
       await prefs.setString(_keyServerUrl, normalized);
       return normalizeServerUrl(normalized);
+    }
+    if (kIsWeb && saved.trim() == productionServerUrl) {
+      return webProductionServerUrl;
     }
     return normalizeServerUrl(saved);
   }

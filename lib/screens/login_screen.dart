@@ -93,7 +93,16 @@ class _LoginScreenState extends State<LoginScreen> {
         user = data['user'] as Map<String, dynamic>;
       } catch (backendError) {
         // Graceful fallback for offline demo testing
-        if (email.contains('admin') || email == '0944444') {
+        if (email.contains('dsma') || email == 'mth') {
+          user = {
+            'id': 'd53a0000-0000-0000-0000-000000000010',
+            'email': email.contains('@') ? email : '$email@edu.local',
+            'full_name': 'DSMA Medical Academy Administrator',
+            'role': 'school_admin',
+            'school_name': 'Defence Services Medical Academy (DSMA)',
+            'school_id': 'd53a0000-0000-0000-0000-000000000001',
+          };
+        } else if (email.contains('admin') || email == '0944444') {
           user = {
             'id': 'd0000000-0000-0000-0000-000000000099',
             'email': email,

@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../models/verifiable_credential.dart';
 import '../../models/whole_child_record.dart';
+import '../../models/lifelong_academic_record.dart';
+import '../../widgets/lifelong_academic_record_sheet.dart';
 import '../../services/crypto_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
@@ -423,9 +425,37 @@ class _GateVerifierScreenState extends State<GateVerifierScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             // Action Buttons
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final profile = LifelongAcademicProfile.fromStudentData(
+                    studentId: result.did.isNotEmpty ? result.did : 'STU-GATE',
+                    studentName: result.studentName.isNotEmpty ? result.studentName : 'Student',
+                    rollNo: result.studentRoll.isNotEmpty ? result.studentRoll : '5A-01',
+                    gradeLevel: 'Grade 5-A',
+                    schoolName: result.schoolName,
+                  );
+                  showLifelongAcademicRecordModal(context, profile: profile);
+                },
+                icon: const Icon(Icons.history_edu, size: 18),
+                label: const Text(
+                  'View Lifelong Academic Record (KG to PhD Level)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF4F46E5),
+                  side: const BorderSide(color: Color(0xFF818CF8)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(

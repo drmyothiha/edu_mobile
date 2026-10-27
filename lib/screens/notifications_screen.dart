@@ -288,9 +288,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                         builder: (_) => ChatScreen(
                           conversationId: notif.data['conversation_id'],
                           title: notif.title,
-                          subtitle: notif.data['student_name'] != null
-                              ? 'Student: ${notif.data['student_name']}'
-                              : 'Parent-Teacher Chat',
+                          subtitle: 'Parent-Teacher Conversation',
                         ),
                       ),
                     );
@@ -361,7 +359,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                notif.body,
+                                MessageModel.formatPreview(notif.body),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: isAbsence ? Colors.red.shade900 : Colors.grey.shade700,
@@ -393,9 +391,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => ChatScreen(
+                                    teacherId: notif.data['teacher_id'] as String?,
                                     studentId: studentId,
-                                    title: 'Class Teacher Chat',
-                                    subtitle: notif.data['class_name'] ?? 'Classroom',
+                                    title: 'Teacher Conversation',
+                                    subtitle: 'Parent-Teacher Conversation',
                                   ),
                                 ),
                               );

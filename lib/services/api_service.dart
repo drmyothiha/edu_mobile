@@ -193,6 +193,36 @@ class ApiService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getSchoolClasses() async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final uri = Uri.parse('$baseUrl/api/v1/classes');
+    final response = await http.get(uri, headers: {
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final list = json.decode(response.body) as List<dynamic>;
+      return list.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
+  static Future<List<Map<String, dynamic>>> getClassStudents(String classId) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final uri = Uri.parse('$baseUrl/api/v1/classes/$classId/students');
+    final response = await http.get(uri, headers: {
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final list = json.decode(response.body) as List<dynamic>;
+      return list.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
   static Future<List<ConversationModel>> getConversations() async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
@@ -231,19 +261,69 @@ class ApiService {
     throw Exception('Failed to open conversation (${response.statusCode})');
   }
 
-  static Future<List<MessageModel>> getMessages(String conversationId) async {
+  static Future<List<MessageModel>> getMessages(
+    String conversationId, {
+    DateTime? after,
+    int limit = 50,
+  }) async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
-    final uri = Uri.parse('$baseUrl/api/v1/conversations/$conversationId/messages');
+    final queryParams = <String, String>{
+      'limit': limit.toString(),
+      if (after != null) 'after': after.toUtc().toIso8601String(),
+    };
+    final uri = Uri.parse('$baseUrl/api/v1/conversations/$conversationId/messages')
+        .replace(queryParameters: queryParams);
     final response = await http.get(uri, headers: {
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
-      return list.map((item) => MessageModel.fromJson(item as Map<String, dynamic>)).toList();
+      return list
+          .map((item) => MessageModel.fromJson(item as Map<String, dynamic>))
+          .toList();
     }
     throw Exception('Failed to load messages (${response.statusCode})');
+  }
+
+  /// Uploads chat media (Voice, Image, Video) to /api/v1/media/upload so PostgreSQL stores only a lightweight URL (~80 bytes).
+  /// Automatically falls back to inline data URI if the target server does not yet expose /api/v1/media/upload.
+  static Future<String> uploadChatMedia({
+    required Uint8List bytes,
+    required String filename,
+    required String fallbackMimeType,
+  }) async {
+    final baseUrl = await StorageService.getServerUrl();
+    final token = await StorageService.getToken();
+    final uri = Uri.parse('$baseUrl/api/v1/media/upload');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              if (token != null) 'Authorization': 'Bearer $token',
+            },
+            body: json.encode({
+              'filename': filename,
+              'data_base64': base64Encode(bytes),
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final url = data['url'] as String?;
+        if (url != null && url.isNotEmpty) {
+          return url.startsWith('http') ? url : '$baseUrl$url';
+        }
+      }
+    } catch (_) {}
+
+    return 'data:$fallbackMimeType;base64,${base64Encode(bytes)}';
   }
 
   static Future<MessageModel> sendMessage(String conversationId, String content) async {

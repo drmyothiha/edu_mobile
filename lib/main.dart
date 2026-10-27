@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'routes/app_routes.dart';
 import 'routes/app_router.dart';
@@ -23,6 +24,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
     HttpOverrides.global = EduHttpOverrides();
+  } else {
+    SemanticsBinding.instance.ensureSemantics();
   }
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

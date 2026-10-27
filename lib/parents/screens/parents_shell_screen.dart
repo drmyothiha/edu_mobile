@@ -5,11 +5,13 @@ import '../../theme/app_theme.dart';
 import '../../widgets/update_dialog.dart';
 import '../../screens/notifications_screen.dart';
 import 'guardian_dashboard_screen.dart';
+import 'parent_conversations_screen.dart';
 
 /// Dedicated Parents / Guardian Shell Screen & UI container.
 /// Hosts Parent-specific workflows:
-/// 1. Children Multi-Child Overview & 5-Pillar Growth Dashboard
-/// 2. Direct Teacher Chat & School Announcement Broadcasts
+/// 1. Children Overview (Name, Age, Grade & Report)
+/// 2. Parent-Teacher Conversations (Separate tab, not tied to students)
+/// 3. School & Class Notices
 class ParentsShellScreen extends StatefulWidget {
   final int initialTab;
   final VoidCallback? onSwitchRole;
@@ -32,7 +34,7 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialTab.clamp(0, 1);
+    _currentIndex = widget.initialTab.clamp(0, 2);
     _loadGuardianProfile();
   }
 
@@ -73,7 +75,7 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: AppTheme.primary,
-        elevation: 2,
+        elevation: 1,
         title: Text(
           parentName.isNotEmpty ? parentName : 'Guardian Portal',
           style: const TextStyle(
@@ -101,6 +103,7 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
             onNavigateTab: (idx) => _onTabTapped(idx),
             onSwitchRole: widget.onSwitchRole,
           ),
+          const ParentConversationsScreen(),
           NotificationsScreen(onSwitchMode: widget.onSwitchRole),
         ],
       ),
@@ -114,13 +117,16 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
         icon: Icons.family_restroom_outlined,
         activeIcon: Icons.family_restroom,
         label: 'Children',
-        subtitle: 'Dashboard',
       ),
       _ParentNavItem(
         icon: Icons.chat_bubble_outline,
         activeIcon: Icons.chat_bubble,
         label: 'Teacher Chat',
-        subtitle: 'Alerts',
+      ),
+      _ParentNavItem(
+        icon: Icons.notifications_none,
+        activeIcon: Icons.notifications,
+        label: 'Notices',
       ),
     ];
 
@@ -128,13 +134,6 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade200)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
       ),
       child: SafeArea(
         child: Padding(
@@ -153,43 +152,36 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
                     behavior: HitTestBehavior.opaque,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primary.withValues(alpha: 0.08) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected ? AppTheme.primary.withValues(alpha: 0.2) : Colors.transparent,
-                        ),
+                        color: isSelected
+                            ? AppTheme.primary.withValues(alpha: 0.08)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(isSelected ? item.activeIcon : item.icon, color: color, size: 20),
+                          Icon(
+                            isSelected ? item.activeIcon : item.icon,
+                            color: color,
+                            size: 20,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.label,
-                                  style: TextStyle(
-                                    color: color,
-                                    fontSize: 11,
-                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  item.subtitle,
-                                  style: TextStyle(
-                                    color: isSelected ? AppTheme.primaryLight : Colors.grey.shade500,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                            child: Text(
+                              item.label,
+                              style: TextStyle(
+                                color: color,
+                                fontSize: 12,
+                                fontWeight: isSelected
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -215,10 +207,16 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
             ),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white.withValues(alpha: 0.2),
-              child: const Icon(Icons.family_restroom, color: Colors.white, size: 36),
+              child: const Icon(
+                Icons.family_restroom,
+                color: Colors.white,
+                size: 36,
+              ),
             ),
             accountName: Text(
-              parentName.isNotEmpty ? parentName : 'Guardian (မိဘ/အုပ်ထိန်းသူ)',
+              parentName.isNotEmpty
+                  ? parentName
+                  : 'Guardian (မိဘ/အုပ်ထိန်းသူ)',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             accountEmail: Text(
@@ -229,7 +227,10 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.system_update_alt, color: AppTheme.primary),
+            leading: const Icon(
+              Icons.system_update_alt,
+              color: AppTheme.primary,
+            ),
             title: const Text('Check for Updates'),
             subtitle: const Text('အပ်ဒိတ် စစ်ဆေးမည်'),
             onTap: () {
@@ -244,7 +245,10 @@ class _ParentsShellScreenState extends State<ParentsShellScreen> {
             leading: const Icon(Icons.logout, color: Colors.redAccent),
             title: const Text(
               'Sign Out (အကောင့်ထွက်မည်)',
-              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             onTap: () {
               Navigator.pop(context);
@@ -262,12 +266,10 @@ class _ParentNavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
-  final String subtitle;
 
   _ParentNavItem({
     required this.icon,
     required this.activeIcon,
     required this.label,
-    required this.subtitle,
   });
 }

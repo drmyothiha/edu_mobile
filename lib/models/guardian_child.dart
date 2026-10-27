@@ -57,17 +57,45 @@ class GuardianChild {
 
   bool get isUnder13 => age < 13;
 
+  static int _inferAge(dynamic rawAge, String gradeLevel, String className) {
+    if (rawAge is num && rawAge.toInt() > 0) {
+      return rawAge.toInt();
+    }
+    if (rawAge is String) {
+      final parsed = int.tryParse(rawAge);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    final combined = '${gradeLevel.toLowerCase()} ${className.toLowerCase()}';
+    if (combined.contains('kg') || combined.contains('kindergarten')) {
+      return 5;
+    }
+    final match = RegExp(r'(\d+)').firstMatch(gradeLevel);
+    if (match != null) {
+      final gradeNum = int.tryParse(match.group(1)!);
+      if (gradeNum != null && gradeNum >= 1 && gradeNum <= 12) {
+        return gradeNum + 5;
+      }
+    }
+    return 10;
+  }
+
   factory GuardianChild.fromJson(Map<String, dynamic> json) {
+    final rawGrade = (json['grade_level'] ?? json['gradeLevel'])?.toString().trim() ?? '';
+    final rawClass = (json['class_name'] ?? json['className'])?.toString().trim() ?? '';
+    final resolvedGrade = rawGrade.isNotEmpty
+        ? rawGrade
+        : (rawClass.isNotEmpty ? rawClass : 'Grade 5');
+
     return GuardianChild(
       id: json['id']?.toString() ?? '',
       fullName: json['full_name']?.toString() ?? json['fullName']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       rollNo: json['roll_no']?.toString() ?? json['roll_number']?.toString() ?? json['rollNo']?.toString() ?? '',
-      gradeLevel: json['grade_level']?.toString() ?? json['gradeLevel']?.toString() ?? 'Grade 5',
-      className: json['class_name']?.toString() ?? json['className']?.toString() ?? '',
+      gradeLevel: resolvedGrade,
+      className: rawClass,
       schoolName: json['school_name']?.toString() ?? json['schoolName']?.toString() ?? 'Basic Education High School',
       schoolCode: json['school_code']?.toString() ?? json['schoolCode']?.toString() ?? '',
-      age: (json['age'] as num?)?.toInt() ?? 10,
+      age: _inferAge(json['age'], resolvedGrade, rawClass),
       nationalStudentId: json['national_student_id']?.toString() ?? json['nationalStudentId']?.toString(),
       attendanceRatePct: (json['attendance_rate_pct'] ?? json['attendanceRatePct'] as num?)?.toDouble() ?? 96.0,
       sessionsPresent: (json['sessions_present'] ?? json['sessionsPresent'] as num?)?.toInt() ?? 42,

@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/verifiable_credential.dart';
+import '../../models/lifelong_academic_record.dart';
+import '../../widgets/lifelong_academic_record_sheet.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../widgets/update_dialog.dart';
@@ -90,6 +93,33 @@ class _StudentWalletScreenState extends State<StudentWalletScreen> {
     setState(() {
       _isLoading = false;
     });
+  }
+
+  void _showLifelongAcademicRecord() {
+    final studentName = widget.childName ??
+        _credentialData?['student_name']?.toString() ??
+        'Alice Walker';
+    final studentId = _parsedVC?.credentialSubject.studentId ??
+        _credentialData?['student_id']?.toString() ??
+        '4f703f66-22d3-4514-b5cc-1b449d3f1313';
+    final gradeLevel = widget.gradeLevel ??
+        _credentialData?['grade_level']?.toString() ??
+        'Grade 8';
+    final schoolName = _parsedVC?.credentialSubject.schoolName ??
+        _credentialData?['issuer_school']?.toString() ??
+        'Yangon Academy High School';
+    final rollNo = _parsedVC?.credentialSubject.studentRollNumber ??
+        _credentialData?['roll_no']?.toString() ??
+        'ROLL-001';
+
+    final profile = LifelongAcademicProfile.fromStudentData(
+      studentId: studentId,
+      studentName: studentName,
+      rollNo: rollNo,
+      gradeLevel: gradeLevel,
+      schoolName: schoolName,
+    );
+    showLifelongAcademicRecordModal(context, profile: profile);
   }
 
   void _loadDemoCredential() {
@@ -758,6 +788,31 @@ class _StudentWalletScreenState extends State<StudentWalletScreen> {
                       ],
                     ),
 
+                    const SizedBox(height: 12),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showLifelongAcademicRecord,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF4F46E5),
+                          side: const BorderSide(color: Color(0xFF818CF8)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.history_edu, size: 18),
+                        label: const Text(
+                          'View Lifelong Academic Record (KG to PhD Level)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
                     const SizedBox(height: 24),
 
                     // Security & Cryptographic Specifications Card
@@ -848,7 +903,7 @@ class _StudentWalletScreenState extends State<StudentWalletScreen> {
         } catch (_) {
           return _buildFallbackInitial(studentName);
         }
-      } else {
+      } else if (!kIsWeb) {
         final file = File(clean);
         if (file.existsSync()) {
           return Image.file(

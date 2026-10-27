@@ -31,6 +31,9 @@ class ConversationModel {
     required this.createdAt,
   });
 
+  String get latestMessagePreview =>
+      MessageModel.formatPreview(latestMessageContent);
+
   factory ConversationModel.fromJson(Map<String, dynamic> json) {
     return ConversationModel(
       id: json['id'] as String,
@@ -71,6 +74,114 @@ class MessageModel {
     required this.isRead,
     required this.createdAt,
   });
+
+  bool get isVoiceMessage => content.startsWith('[VOICE:');
+  bool get isImageMessage => content.startsWith('[IMAGE:');
+  bool get isVideoMessage => content.startsWith('[VIDEO:');
+
+  int get voiceDurationSeconds {
+    if (!isVoiceMessage) return 0;
+    final parts = content.split(':');
+    if (parts.length >= 3) {
+      return int.tryParse(parts[1]) ?? 1;
+    }
+    return 1;
+  }
+
+  String get voiceBase64 {
+    if (!isVoiceMessage) return '';
+    final firstColon = content.indexOf(':');
+    if (firstColon == -1) return '';
+    final secondColon = content.indexOf(':', firstColon + 1);
+    if (secondColon == -1) return '';
+    var raw = content.substring(secondColon + 1);
+    if (raw.endsWith(']')) {
+      raw = raw.substring(0, raw.length - 1);
+    }
+    return raw;
+  }
+
+  /// Format: `[IMAGE:<filename>:<dataUriOrBase64OrUrl>]`
+  String get imageFileName {
+    if (!isImageMessage) return 'image.png';
+    final firstColon = content.indexOf(':');
+    if (firstColon == -1) return 'image.png';
+    final secondColon = content.indexOf(':', firstColon + 1);
+    if (secondColon == -1) return 'image.png';
+    final name = content.substring(firstColon + 1, secondColon).trim();
+    return name.isEmpty ? 'image.png' : name;
+  }
+
+  String get imageSource {
+    if (!isImageMessage) return '';
+    final firstColon = content.indexOf(':');
+    if (firstColon == -1) return '';
+    final secondColon = content.indexOf(':', firstColon + 1);
+    if (secondColon == -1) return '';
+    var raw = content.substring(secondColon + 1);
+    if (raw.endsWith(']')) {
+      raw = raw.substring(0, raw.length - 1);
+    }
+    return raw;
+  }
+
+  /// Format: `[VIDEO:<filename>:<durationSeconds>:<dataUriOrBase64OrUrl>]`
+  String get videoFileName {
+    if (!isVideoMessage) return 'video.mp4';
+    final parts = content.split(':');
+    if (parts.length >= 3 && parts[1].trim().isNotEmpty) {
+      return parts[1].trim();
+    }
+    return 'video.mp4';
+  }
+
+  int get videoDurationSeconds {
+    if (!isVideoMessage) return 0;
+    final parts = content.split(':');
+    if (parts.length >= 4) {
+      return int.tryParse(parts[2]) ?? 5;
+    }
+    return 5;
+  }
+
+  String get videoSource {
+    if (!isVideoMessage) return '';
+    final firstColon = content.indexOf(':');
+    if (firstColon == -1) return '';
+    final secondColon = content.indexOf(':', firstColon + 1);
+    if (secondColon == -1) return '';
+    final thirdColon = content.indexOf(':', secondColon + 1);
+    if (thirdColon == -1) return '';
+    var raw = content.substring(thirdColon + 1);
+    if (raw.endsWith(']')) {
+      raw = raw.substring(0, raw.length - 1);
+    }
+    return raw;
+  }
+
+  static String formatPreview(String raw) {
+    if (raw.startsWith('[VOICE:')) {
+      final parts = raw.split(':');
+      final sec = parts.length >= 3 ? (int.tryParse(parts[1]) ?? 1) : 1;
+      return '[Voice Message • $sec"]';
+    }
+    if (raw.startsWith('[IMAGE:')) {
+      final parts = raw.split(':');
+      final name = parts.length >= 3 && parts[1].trim().isNotEmpty
+          ? parts[1].trim()
+          : 'Photo';
+      return '[Image • $name]';
+    }
+    if (raw.startsWith('[VIDEO:')) {
+      final parts = raw.split(':');
+      final name = parts.length >= 3 && parts[1].trim().isNotEmpty
+          ? parts[1].trim()
+          : 'Clip';
+      final sec = parts.length >= 4 ? (int.tryParse(parts[2]) ?? 5) : 5;
+      return '[Video • $sec" • $name]';
+    }
+    return raw;
+  }
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
     return MessageModel(

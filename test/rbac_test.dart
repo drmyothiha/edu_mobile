@@ -96,6 +96,35 @@ void main() {
       expect(find.text('Children'), findsOneWidget);
       expect(find.text('Child Pass'), findsNothing);
       expect(find.text('Teacher Chat'), findsOneWidget);
+      expect(find.text('Notices'), findsOneWidget);
+
+      // Verify Record Appeal and Child Data Privacy Deletion are removed from UI
+      expect(find.textContaining('Record Appeal'), findsNothing);
+      expect(find.textContaining('Right to be Forgotten'), findsNothing);
+      expect(find.textContaining('Message Class Teacher'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      SseNotificationService.stopListening();
+    });
+
+    testWidgets('Child view displays clean UI with only Name, Age, Grade, and Report', (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      StorageService.resetForTesting();
+
+      await tester.pumpWidget(const EduMobileApp(initialRoute: '/parents'));
+      await tester.pumpAndSettle();
+
+      // Default seed child: Ma Su Myat Noe, Age 10, Grade 5-A, and Report
+      expect(find.textContaining('Ma Su Myat Noe'), findsWidgets);
+      expect(find.text('Age 10'), findsOneWidget);
+      expect(find.text('Grade 5-A'), findsOneWidget);
+      expect(find.text('Report'), findsOneWidget);
+
+      // Clutter removed from child view
+      expect(find.textContaining('Record Appeal'), findsNothing);
+      expect(find.textContaining('Right to be Forgotten'), findsNothing);
+      expect(find.textContaining('Delete Child Data'), findsNothing);
+      expect(find.textContaining('Message Class Teacher'), findsNothing);
 
       await tester.pumpWidget(const SizedBox());
       SseNotificationService.stopListening();

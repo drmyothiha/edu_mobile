@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/whole_child_record.dart';
+import '../../models/lifelong_academic_record.dart';
+import '../../widgets/lifelong_academic_record_sheet.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
@@ -162,6 +164,7 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
     final jsonStr = const JsonEncoder.withIndent('  ').convert(payload);
     Clipboard.setData(ClipboardData(text: jsonStr));
 
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -455,6 +458,17 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
     );
   }
 
+  void _showStudentLifelongRecord(WholeChildRecord student) {
+    final profile = LifelongAcademicProfile.fromStudentData(
+      studentId: student.studentId,
+      studentName: student.fullName,
+      rollNo: student.rollNo,
+      gradeLevel: 'Grade 5-A (Primary)',
+      nationalStudentId: student.nationalStudentId,
+    );
+    showLifelongAcademicRecordModal(context, profile: profile);
+  }
+
   Widget _buildStudentCard(WholeChildRecord student) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -505,17 +519,50 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    '${student.attendanceRatePct}% Att',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.green.shade800),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => _showStudentLifelongRecord(student),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF818CF8)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.history_edu, size: 13, color: Color(0xFF4F46E5)),
+                            SizedBox(width: 4),
+                            Text(
+                              'KG → PhD',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF4F46E5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        '${student.attendanceRatePct}% Att',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.green.shade800),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -602,6 +649,39 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
                 ],
               ),
             ],
+
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => _showStudentLifelongRecord(student),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4F46E5).withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF4F46E5).withValues(alpha: 0.2),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.history_edu, size: 16, color: Color(0xFF4F46E5)),
+                    SizedBox(width: 6),
+                    Text(
+                      'View Lifelong Academic Record (KG to PhD Level)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF4338CA),
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios, size: 11, color: Color(0xFF4F46E5)),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

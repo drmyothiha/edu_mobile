@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user_role.dart';
+import '../../models/lifelong_academic_record.dart';
+import '../../widgets/lifelong_academic_record_sheet.dart';
 import '../../services/storage_service.dart';
 import '../../services/timetable_storage_service.dart';
 import '../../widgets/update_dialog.dart';
@@ -40,6 +42,23 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
   void initState() {
     super.initState();
     _loadProfileAndSettings();
+  }
+
+  void _openLifelongRecord() {
+    final fullName = _user?.fullName.isNotEmpty == true
+        ? _user!.fullName
+        : 'Alice Walker';
+    final gradeLevel = _user?.gradeLevel ?? 'Grade 8';
+    final studentId = _user?.id ?? 'STU-2026-0842';
+    final schoolName = _user?.schoolName ?? 'Basic Education School';
+
+    final profile = LifelongAcademicProfile.fromStudentData(
+      studentId: studentId,
+      studentName: fullName,
+      gradeLevel: gradeLevel,
+      schoolName: schoolName,
+    );
+    showLifelongAcademicRecordModal(context, profile: profile);
   }
 
   Future<void> _loadProfileAndSettings() async {
@@ -599,6 +618,15 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                 guardianName: guardianName,
                 guardianEmail: guardianEmail,
               ),
+              const SizedBox(height: 20),
+
+              // SECTION: LIFELONG ACADEMIC TRAJECTORY (KG to PhD)
+              _buildSectionHeader(
+                title: 'တစ်သက်တာ ပညာသင်ယူမှု မှတ်တမ်းစဉ် (Lifelong Record: KG → PhD)',
+                icon: Icons.history_edu,
+              ),
+              const SizedBox(height: 8),
+              _buildLifelongTrajectoryCard(),
               const SizedBox(height: 20),
 
               // SECTION: TIMETABLE & CURRICULUM SYNC
@@ -1280,7 +1308,206 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                   label: 'ပညာသင်နှစ် (Academic Year)',
                   value: '၂၀၂၆ - ၂၀၂၇ ပညာသင်နှစ်',
                 ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: _openLifelongRecord,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF2563EB).withValues(alpha: 0.15),
+                          const Color(0xFF9333EA).withValues(alpha: 0.15),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF4C8DFF).withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4C8DFF).withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.history_edu,
+                            color: Color(0xFF93C5FD),
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Lifelong Academic Record (KG to PhD Level)',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                'Complete verified educational trajectory & highest level',
+                                style: TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Color(0xFF93C5FD),
+                          size: 13,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLifelongTrajectoryCard() {
+    final gradeLevel = _user?.gradeLevel ?? 'Grade 8';
+    final stages = [
+      {'code': 'KG', 'name': 'Pre-Primary', 'color': const Color(0xFFF59E0B)},
+      {
+        'code': 'BEPS',
+        'name': 'Primary (G1-5)',
+        'color': const Color(0xFF10B981)
+      },
+      {'code': 'BEMS', 'name': 'Middle (G6-9)', 'color': const Color(0xFF0EA5E9)},
+      {'code': 'BEHS', 'name': 'High (G10-12)', 'color': const Color(0xFF6366F1)},
+      {'code': 'B.Sc.', 'name': 'Bachelor', 'color': const Color(0xFF2563EB)},
+      {'code': 'M.Sc.', 'name': 'Master', 'color': const Color(0xFF9333EA)},
+      {'code': 'Ph.D.', 'name': 'Doctorate', 'color': const Color(0xFFE11D48)},
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161822),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF262A38)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4C8DFF).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.school,
+                  color: Color(0xFF4C8DFF),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Educational Pathway: KG to PhD Level',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'Current Stage: $gradeLevel • W3C Verified Credentials',
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: stages.map((s) {
+                final c = s['color'] as Color;
+                return Container(
+                  margin: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: c.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: c.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        s['code'] as String,
+                        style: TextStyle(
+                          color: c,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        s['name'] as String,
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 9,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openLifelongRecord,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF93C5FD),
+                side: const BorderSide(color: Color(0xFF3B82F6)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+              ),
+              icon: const Icon(Icons.history_edu, size: 17),
+              label: const Text(
+                'View Complete Lifelong Academic Record',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ],

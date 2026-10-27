@@ -3,10 +3,10 @@ import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/update_dialog.dart';
-import '../../screens/notifications_screen.dart';
 import 'gate_verifier_screen.dart';
 import 'classroom_sync_screen.dart';
 import 'scan_history_screen.dart';
+import 'teacher_conversations_screen.dart';
 
 /// Dedicated Teacher Shell Screen & UI container.
 /// Hosts Teacher-specific workflows:
@@ -184,7 +184,7 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
         children: [
           GateVerifierScreen(onSwitchMode: widget.onSwitchRole ?? () {}),
           ClassroomSyncScreen(onSwitchMode: widget.onSwitchRole),
-          NotificationsScreen(onSwitchMode: widget.onSwitchRole),
+          const TeacherConversationsScreen(),
         ],
       ),
       bottomNavigationBar: _buildTeacherBottomNav(),
