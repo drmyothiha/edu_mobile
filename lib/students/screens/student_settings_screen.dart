@@ -120,8 +120,8 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                 Expanded(
                   child: Text(
                     res.isOffline
-                        ? 'အော့ဖ်လိုင်း မုဒ်: SQLite ဒေတာဘေ့စ်မှ အချိန်ဇယားကို သိမ်းဆည်းပြီး (${res.periods.length} ချိန်)'
-                        : 'အတန်းချိန်ဇယား ဆာဗာမှ အောင်မြင်စွာ sync လုပ်ပြီးပါပြီ! (${res.periods.length} ချိန်)',
+                        ? 'ဆာဗာနှင့် ချိတ်ဆက်၍ မရပါ: လက်ရှိ အချိန်ဇယား (${res.periods.length} ချိန်)'
+                        : 'အတန်းချိန်ဇယား ဆာဗာမှ အောင်မြင်စွာ ရယူပြီးပါပြီ! (${res.periods.length} ချိန်)',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -417,7 +417,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Autonomous offline-first educational platform designed for Myanmar basic education schools. Incorporates W3C Verifiable Credentials, local SQLite timetable sync, and Whole-Child 5-Pillar growth tracking.',
+                        'Autonomous educational platform designed for Myanmar basic education schools. Incorporates W3C Verifiable Credentials, direct API timetable sync, and Whole-Child 5-Pillar growth tracking.',
                         style: TextStyle(
                           color: Color(0xFFCBD5E1),
                           fontSize: 11,
@@ -664,15 +664,15 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                   ),
                   const Divider(color: Color(0xFF1E2230), height: 1),
                   _buildSettingTile(
-                    icon: Icons.storage,
-                    iconColor: const Color(0xFFFBBF24),
-                    title: 'SQLite အချိန်ဇယား သိမ်းဆည်းမှု',
+                    icon: Icons.cloud_done_outlined,
+                    iconColor: const Color(0xFF38BDF8),
+                    title: 'အတန်းချိန်ဇယား API ချိတ်ဆက်မှု',
                     subtitle:
-                        'အော့ဖ်လိုင်းအတွက် ဘာသာရပ် $_cachedPeriodCount ချိန် သိမ်းဆည်းထားသည်',
+                        'ဆာဗာမှ ဘာသာရပ် $_cachedPeriodCount ချိန် တိုက်ရိုက်ရယူထားသည်',
                     trailing: Text(
                       _lastSyncTime != null
                           ? '${_lastSyncTime!.hour.toString().padLeft(2, '0')}:${_lastSyncTime!.minute.toString().padLeft(2, '0')}'
-                          : 'Cached',
+                          : 'Live API',
                       style: const TextStyle(
                         color: Color(0xFF94A3B8),
                         fontSize: 11,

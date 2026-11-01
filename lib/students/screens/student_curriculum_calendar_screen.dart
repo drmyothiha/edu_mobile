@@ -93,19 +93,16 @@ class _StudentCurriculumCalendarScreenState extends State<StudentCurriculumCalen
   }
 
   Future<void> _loadTimetableData() async {
-    // 1. Immediately load local SQLite cached data (0ms latency, offline ready)
-    final shift = await TimetableStorageService.getSchoolShift();
-    final periods = await TimetableStorageService.getPeriods(shift: shift);
+    // Directly fetch timetable from the backend API
+    setState(() => _isLoading = true);
+    final res = await TimetableStorageService.syncWithBackend();
 
     if (mounted) {
       setState(() {
-        _periods = periods;
+        _periods = res.periods;
         _isLoading = false;
       });
     }
-
-    // 2. Perform silent online sync in the background
-    _performSync(showToast: false);
   }
 
   Future<void> _performSync({bool showToast = true}) async {
@@ -132,7 +129,7 @@ class _StudentCurriculumCalendarScreenState extends State<StudentCurriculumCalen
               content: Row(
                 children: [
                   Icon(
-                    res.isOffline ? Icons.storage : Icons.check_circle,
+                    res.isOffline ? Icons.cloud_off : Icons.check_circle,
                     color: res.isOffline ? const Color(0xFFFBBF24) : const Color(0xFF34D399),
                     size: 18,
                   ),
@@ -140,8 +137,8 @@ class _StudentCurriculumCalendarScreenState extends State<StudentCurriculumCalen
                   Expanded(
                     child: Text(
                       res.isOffline
-                          ? 'အော့ဖ်လိုင်း မုဒ်: SQLite ဒေတာဘေ့စ်မှ အချိန်ဇယားကို ပြသထားပါသည် (${res.periods.length} ချိန်)'
-                          : 'အတန်းချိန်ဇယား ဆာဗာမှ အောင်မြင်စွာ sync လုပ်ပြီးပါပြီ! (SQLite Cache: ${res.periods.length} ချိန်)',
+                          ? 'ဆာဗာနှင့် ချိတ်ဆက်၍ မရပါ: လက်ရှိ အချိန်ဇယား (${res.periods.length} ချိန်)'
+                          : 'အတန်းချိန်ဇယား ဆာဗာမှ အောင်မြင်စွာ ရယူပြီးပါပြီ! (${res.periods.length} ချိန်)',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                   ),

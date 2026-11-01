@@ -11,7 +11,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  group('CurriculumPeriod Backend & SQLite Serialization Tests', () {
+  group('CurriculumPeriod Backend Serialization Tests', () {
     test('CurriculumPeriod.fromBackendJson parses backend DTO correctly', () {
       final backendJson = {
         'id': 'per-class123-1-1',
@@ -94,7 +94,7 @@ void main() {
     });
   });
 
-  group('TimetableStorageService Offline Storage & Shift Tests', () {
+  group('TimetableStorageService API Direct & Shift Tests', () {
     test('Default timetable seed is provided when empty', () async {
       final periods = await TimetableStorageService.getPeriods(shift: 'full_day');
       expect(periods, isNotEmpty);

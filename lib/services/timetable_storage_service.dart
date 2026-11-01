@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/curriculum_period.dart';
-import 'sqlite_timetable_helper.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
 
@@ -27,21 +26,19 @@ class TimetableSyncResult {
   });
 }
 
-/// Database & Local Storage Service for Student Timetable and School Teaching Shifts.
-///
-/// Features:
-/// 1. Primary offline storage via SQLite (`student_timetable.db` using `sqflite`)
-/// 2. Fast secondary cache in `SharedPreferences`
-/// 3. Bi-directional sync with the Go backend when online
-/// 4. Graceful zero-latency fallback to SQLite offline cache when offline
+/// Direct API Service for Student Timetable and School Teaching Shifts.
+/// Operates directly via the backend API without local SQLite databases.
 class TimetableStorageService {
-  static const String _keyTimetablePeriods = 'cached_student_curriculum_periods';
   static const String _keySchoolShift = 'server_assigned_school_shift';
   static const String _keyLastSync = 'student_timetable_last_sync';
   static const String _keyClassName = 'student_assigned_class_name';
   static const String _keyClassId = 'student_assigned_class_id';
+  static const String _keyTimetablePeriods = 'cached_student_curriculum_periods';
 
   static SharedPreferences? _prefs;
+
+  // In-memory cache for fast session access
+  static final Map<String, List<CurriculumPeriod>> _memoryPeriodsCache = {};
 
   static Future<SharedPreferences> get _instance async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -50,42 +47,24 @@ class TimetableStorageService {
 
   /// Get the server-assigned teaching shift: 'full_day', 'morning', or 'afternoon'
   static Future<String> getSchoolShift() async {
-    // 1. Try SQLite metadata
-    final sqliteShift = await SqliteTimetableHelper.getMetadata('school_shift');
-    if (sqliteShift != null && sqliteShift.isNotEmpty) {
-      return sqliteShift;
-    }
-
-    // 2. Fallback to SharedPreferences
     final prefs = await _instance;
     return prefs.getString(_keySchoolShift) ?? 'full_day';
   }
 
   /// Set the server-assigned teaching shift
   static Future<void> setSchoolShift(String shift) async {
-    await SqliteTimetableHelper.setMetadata('school_shift', shift);
     final prefs = await _instance;
     await prefs.setString(_keySchoolShift, shift);
   }
 
   /// Get the assigned class name
   static Future<String?> getClassName() async {
-    final sqliteName = await SqliteTimetableHelper.getMetadata('class_name');
-    if (sqliteName != null && sqliteName.isNotEmpty) {
-      return sqliteName;
-    }
     final prefs = await _instance;
     return prefs.getString(_keyClassName);
   }
 
   /// Get the last sync timestamp
   static Future<DateTime?> getLastSyncTime() async {
-    final sqliteTimeStr = await SqliteTimetableHelper.getMetadata('last_sync_time');
-    if (sqliteTimeStr != null && sqliteTimeStr.isNotEmpty) {
-      try {
-        return DateTime.parse(sqliteTimeStr);
-      } catch (_) {}
-    }
     final prefs = await _instance;
     final prefStr = prefs.getString(_keyLastSync);
     if (prefStr != null) {
@@ -96,35 +75,50 @@ class TimetableStorageService {
     return null;
   }
 
-  /// Load all cached timetable periods for the student and school-assigned shift
+  /// Load timetable periods directly from API or session memory
   static Future<List<CurriculumPeriod>> getPeriods({
     String? shift,
     String? studentId,
     String? gradeLevel,
+    bool forceRefresh = false,
   }) async {
     final effectiveShift = shift ?? await getSchoolShift();
 
-    // 1. Resolve student context if not passed
+    // 1. Resolve student context
     if (studentId == null || gradeLevel == null) {
       final currentUser = await StorageService.getCurrentUser();
       studentId ??= currentUser?.id;
       gradeLevel ??= currentUser?.gradeLevel;
     }
 
-    // 2. Query SQLite offline database (user context-aware)
-    final sqlitePeriods = await SqliteTimetableHelper.getPeriods(
-      shift: effectiveShift,
-      studentId: studentId,
-      gradeLevel: gradeLevel,
-    );
-    if (sqlitePeriods != null && sqlitePeriods.isNotEmpty) {
-      return sqlitePeriods;
+    final cacheKey = '${studentId ?? "default"}_$effectiveShift';
+
+    // Return in-memory cache if available and not forcing refresh
+    if (!forceRefresh &&
+        _memoryPeriodsCache.containsKey(cacheKey) &&
+        _memoryPeriodsCache[cacheKey]!.isNotEmpty) {
+      return _memoryPeriodsCache[cacheKey]!;
     }
 
-    // 3. Query SharedPreferences backup cache (namespaced by student)
+    // Try direct API fetch
+    try {
+      final syncResult = await syncWithBackend();
+      if (syncResult.periods.isNotEmpty) {
+        return syncResult.periods;
+      }
+    } catch (e) {
+      debugPrint('[TimetableService] Direct API fetch error, checking fallback: $e');
+    }
+
+    if (_memoryPeriodsCache.containsKey(cacheKey) &&
+        _memoryPeriodsCache[cacheKey]!.isNotEmpty) {
+      return _memoryPeriodsCache[cacheKey]!;
+    }
+
+    // Check SharedPreferences fallback
     final prefs = await _instance;
-    final cacheKey = '${_keyTimetablePeriods}_${studentId ?? "default"}_$effectiveShift';
-    final raw = prefs.getString(cacheKey);
+    final prefKey = '${_keyTimetablePeriods}_$cacheKey';
+    final raw = prefs.getString(prefKey);
     if (raw != null) {
       try {
         final list = json.decode(raw) as List<dynamic>;
@@ -132,34 +126,23 @@ class TimetableStorageService {
             .map((e) => CurriculumPeriod.fromJson(e as Map<String, dynamic>))
             .toList();
         if (periods.isNotEmpty) {
-          // Re-populate SQLite
-          await SqliteTimetableHelper.savePeriods(
-            periods,
-            shift: effectiveShift,
-            studentId: studentId,
-            gradeLevel: gradeLevel,
-          );
+          _memoryPeriodsCache[cacheKey] = periods;
           return periods;
         }
       } catch (_) {}
     }
 
-    // 4. Default Seed according to student's exact grade (KG, Grade 5, or Grade 8)
+    // Default Seed according to student's exact grade if API was unreachable
     final defaultPeriods = CurriculumPeriod.getCurriculumForGrade(
       gradeLevel,
       shift: effectiveShift,
       studentId: studentId,
     );
-    await savePeriods(
-      defaultPeriods,
-      shift: effectiveShift,
-      studentId: studentId,
-      gradeLevel: gradeLevel,
-    );
+    _memoryPeriodsCache[cacheKey] = defaultPeriods;
     return defaultPeriods;
   }
 
-  /// Save timetable periods into offline local storage (SQLite + SharedPreferences)
+  /// Save timetable periods into in-memory session cache (and SharedPreferences for fast restore)
   static Future<void> savePeriods(
     List<CurriculumPeriod> periods, {
     String? shift,
@@ -169,22 +152,13 @@ class TimetableStorageService {
     String? gradeLevel,
   }) async {
     final effectiveShift = shift ?? await getSchoolShift();
+    final cacheKey = '${studentId ?? "default"}_$effectiveShift';
 
-    // 1. Save to SQLite
-    await SqliteTimetableHelper.savePeriods(
-      periods,
-      shift: effectiveShift,
-      className: className,
-      classId: classId,
-      studentId: studentId,
-      gradeLevel: gradeLevel,
-    );
+    _memoryPeriodsCache[cacheKey] = periods;
 
-    // 2. Backup to SharedPreferences (namespaced by student)
     final prefs = await _instance;
     final encoded = json.encode(periods.map((p) => p.toJson()).toList());
-    final cacheKey = '${_keyTimetablePeriods}_${studentId ?? "default"}_$effectiveShift';
-    await prefs.setString(cacheKey, encoded);
+    await prefs.setString('${_keyTimetablePeriods}_$cacheKey', encoded);
     await prefs.setString(_keySchoolShift, effectiveShift);
     await prefs.setString(_keyLastSync, DateTime.now().toIso8601String());
     if (className != null) {
@@ -203,19 +177,6 @@ class TimetableStorageService {
     String? gradeLevel,
   }) async {
     final effectiveShift = shift ?? await getSchoolShift();
-
-    // 1. Query SQLite
-    final sqliteDayPeriods = await SqliteTimetableHelper.getPeriodsForDay(
-      dayOfWeek,
-      shift: effectiveShift,
-      studentId: studentId,
-      gradeLevel: gradeLevel,
-    );
-    if (sqliteDayPeriods != null && sqliteDayPeriods.isNotEmpty) {
-      return sqliteDayPeriods;
-    }
-
-    // 2. Fallback
     final all = await getPeriods(
       shift: effectiveShift,
       studentId: studentId,
@@ -225,7 +186,7 @@ class TimetableStorageService {
       ..sort((a, b) => a.startHourDecimal.compareTo(b.startHourDecimal));
   }
 
-  /// Syncs timetable with backend API and updates local SQLite offline storage
+  /// Directly queries the backend API for the latest timetable
   static Future<TimetableSyncResult> syncWithBackend({String? classId}) async {
     try {
       final user = await StorageService.getUser();
@@ -255,7 +216,6 @@ class TimetableStorageService {
         );
       }
 
-      // Persist into SQLite offline storage with student context
       await savePeriods(
         periods,
         shift: shift,
@@ -274,14 +234,17 @@ class TimetableStorageService {
         isOffline: false,
       );
     } catch (e) {
-      debugPrint('[TimetableSync] Sync error ($e), falling back to offline SQLite database.');
+      debugPrint('[TimetableService] API fetch error ($e)');
       final currentShift = await getSchoolShift();
       final currentUser = await StorageService.getCurrentUser();
-      final cachedPeriods = await getPeriods(
-        shift: currentShift,
-        studentId: currentUser?.id,
-        gradeLevel: currentUser?.gradeLevel,
-      );
+      final cacheKey = '${currentUser?.id ?? "default"}_$currentShift';
+
+      final cachedPeriods = _memoryPeriodsCache[cacheKey] ??
+          CurriculumPeriod.getCurriculumForGrade(
+            currentUser?.gradeLevel,
+            shift: currentShift,
+            studentId: currentUser?.id,
+          );
       final className = await getClassName() ?? (currentUser?.gradeLevel ?? 'Grade 8');
       final lastSync = await getLastSyncTime();
 
@@ -295,5 +258,10 @@ class TimetableStorageService {
         errorMessage: e.toString(),
       );
     }
+  }
+
+  /// Clear in-memory cache (e.g. on logout)
+  static void clearCache() {
+    _memoryPeriodsCache.clear();
   }
 }

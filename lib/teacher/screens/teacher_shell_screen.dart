@@ -3,7 +3,6 @@ import '../../models/user_role.dart';
 import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/update_dialog.dart';
-import 'gate_verifier_screen.dart';
 import 'classroom_sync_screen.dart';
 import 'scan_history_screen.dart';
 import 'teacher_conversations_screen.dart';
@@ -17,11 +16,7 @@ class TeacherShellScreen extends StatefulWidget {
   final int initialTab;
   final VoidCallback? onSwitchRole;
 
-  const TeacherShellScreen({
-    super.key,
-    this.initialTab = 0,
-    this.onSwitchRole,
-  });
+  const TeacherShellScreen({super.key, this.initialTab = 0, this.onSwitchRole});
 
   @override
   State<TeacherShellScreen> createState() => _TeacherShellScreenState();
@@ -35,7 +30,10 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialTab;
+    // The first Kiosk tab was removed, so retain route indices by
+    // shifting the remaining tabs left and clamping out of-range values.
+    _currentIndex = widget.initialTab == 0 ? 0 : widget.initialTab - 1;
+    _currentIndex = _currentIndex.clamp(0, 1);
     _loadTeacherProfile();
   }
 
@@ -56,9 +54,9 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
   }
 
   void _openScanHistory() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ScanHistoryScreen()));
   }
 
   void _handleSignOut() async {
@@ -71,9 +69,7 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final teacherName = _teacherUser?.fullName.isNotEmpty == true
@@ -103,7 +99,11 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
                   CircleAvatar(
                     backgroundColor: Colors.teal.shade100,
                     radius: 18,
-                    child: const Icon(Icons.school, color: Colors.teal, size: 20),
+                    child: const Icon(
+                      Icons.school,
+                      color: Colors.teal,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -126,7 +126,10 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
                             ),
                             const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.teal.shade600,
                                 borderRadius: BorderRadius.circular(4),
@@ -154,22 +157,38 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.system_update_alt, color: Colors.white, size: 21),
+                    icon: const Icon(
+                      Icons.system_update_alt,
+                      color: Colors.white,
+                      size: 21,
+                    ),
                     tooltip: 'Check for Updates (အပ်ဒိတ် စစ်ဆေးမည်)',
                     onPressed: () => UpdateDialog.show(context),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.history, color: Colors.white, size: 22),
+                    icon: const Icon(
+                      Icons.history,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     tooltip: 'Verification History',
                     onPressed: _openScanHistory,
                   ),
                   IconButton(
-                    icon: const Icon(Icons.switch_account_outlined, color: Colors.white, size: 22),
+                    icon: const Icon(
+                      Icons.switch_account_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     tooltip: 'Switch Role (RBAC)',
                     onPressed: widget.onSwitchRole,
                   ),
                   IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                    icon: const Icon(
+                      Icons.logout,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     tooltip: 'Sign Out',
                     onPressed: _handleSignOut,
                   ),
@@ -182,7 +201,6 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          GateVerifierScreen(onSwitchMode: widget.onSwitchRole ?? () {}),
           ClassroomSyncScreen(onSwitchMode: widget.onSwitchRole),
           const TeacherConversationsScreen(),
         ],
@@ -193,12 +211,6 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
 
   Widget _buildTeacherBottomNav() {
     final items = [
-      _TeacherNavItem(
-        icon: Icons.qr_code_scanner_outlined,
-        activeIcon: Icons.qr_code_scanner,
-        label: 'Kiosk',
-        subtitle: 'Auto Scan',
-      ),
       _TeacherNavItem(
         icon: Icons.hub_outlined,
         activeIcon: Icons.hub,
@@ -232,7 +244,9 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
             children: List.generate(items.length, (idx) {
               final item = items[idx];
               final isSelected = _currentIndex == idx;
-              final color = isSelected ? Colors.teal.shade800 : AppTheme.textMuted;
+              final color = isSelected
+                  ? Colors.teal.shade800
+                  : AppTheme.textMuted;
 
               return Expanded(
                 child: Padding(
@@ -242,18 +256,29 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
                     behavior: HitTestBehavior.opaque,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.teal.withValues(alpha: 0.08) : Colors.transparent,
+                        color: isSelected
+                            ? Colors.teal.withValues(alpha: 0.08)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isSelected ? Colors.teal.withValues(alpha: 0.25) : Colors.transparent,
+                          color: isSelected
+                              ? Colors.teal.withValues(alpha: 0.25)
+                              : Colors.transparent,
                         ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(isSelected ? item.activeIcon : item.icon, color: color, size: 20),
+                          Icon(
+                            isSelected ? item.activeIcon : item.icon,
+                            color: color,
+                            size: 20,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Column(
@@ -265,14 +290,18 @@ class _TeacherShellScreenState extends State<TeacherShellScreen> {
                                   style: TextStyle(
                                     color: color,
                                     fontSize: 11,
-                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
                                   item.subtitle,
                                   style: TextStyle(
-                                    color: isSelected ? Colors.teal.shade600 : Colors.grey.shade500,
+                                    color: isSelected
+                                        ? Colors.teal.shade600
+                                        : Colors.grey.shade500,
                                     fontSize: 9,
                                     fontWeight: FontWeight.w600,
                                   ),
