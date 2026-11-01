@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/messaging_models.dart';
 import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
 import '../../services/sse_notification_service.dart';
+import '../../routes/app_router.dart';
 import '../../theme/app_theme.dart';
 import '../../screens/chat_screen.dart';
 
@@ -40,6 +42,14 @@ class _TeacherConversationsScreenState
   }
 
   Future<void> _loadConversations({bool silent = false}) async {
+    final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      if (mounted) {
+        await AppRouter.redirectToLogin(context);
+      }
+      return;
+    }
+
     if (!silent) {
       setState(() {
         _loading = true;
@@ -69,7 +79,12 @@ class _TeacherConversationsScreenState
                   );
                   convs.add(created);
                   existingParentIds.add(pid);
-                } catch (_) {}
+                } catch (e) {
+                  if (e is UnauthorizedException || e.toString().contains('401')) {
+                    if (mounted) await AppRouter.redirectToLogin(context);
+                    return;
+                  }
+                }
               } else if (pid.isEmpty && sid.isNotEmpty) {
                 try {
                   final created = await ApiService.getOrCreateConversation(
@@ -79,11 +94,21 @@ class _TeacherConversationsScreenState
                     convs.add(created);
                     existingParentIds.add(created.parentId);
                   }
-                } catch (_) {}
+                } catch (e) {
+                  if (e is UnauthorizedException || e.toString().contains('401')) {
+                    if (mounted) await AppRouter.redirectToLogin(context);
+                    return;
+                  }
+                }
               }
             }
           }
-        } catch (_) {}
+        } catch (e) {
+          if (e is UnauthorizedException || e.toString().contains('401')) {
+            if (mounted) await AppRouter.redirectToLogin(context);
+            return;
+          }
+        }
       }
 
       // Deduplicate by parentId so each parent is a single Parent-Teacher conversation
@@ -108,6 +133,14 @@ class _TeacherConversationsScreenState
         });
       }
     } catch (e) {
+      if (e is UnauthorizedException ||
+          e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        if (mounted) {
+          await AppRouter.redirectToLogin(context);
+        }
+        return;
+      }
       if (mounted) {
         setState(() {
           _error = e.toString().replaceAll('Exception: ', '');

@@ -4,6 +4,7 @@ import '../models/user_role.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../services/jwt_decoder.dart';
+import '../services/fcm_service.dart';
 import '../routes/app_routes.dart';
 import '../widgets/update_dialog.dart';
 import '../theme/app_theme.dart';
@@ -184,6 +185,11 @@ class _LoginScreenState extends State<LoginScreen> {
         await ApiService.getMyChildren();
       } catch (_) {}
     }
+
+    // Sync FCM device token with backend
+    try {
+      FcmService.syncDeviceToken().catchError((_) {});
+    } catch (_) {}
 
     final jwtRole =
         JwtDecoder.getRole(token) ??

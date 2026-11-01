@@ -29,6 +29,11 @@ class SseNotificationService {
 
     try {
       final response = await _client!.send(request);
+      if (response.statusCode == 401) {
+        stopListening();
+        await StorageService.clearSession();
+        return;
+      }
       _subscription = response.stream
           .transform(utf8.decoder)
           .transform(const LineSplitter())

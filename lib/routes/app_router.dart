@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/user_role.dart';
 import '../services/storage_service.dart';
 import '../services/jwt_decoder.dart';
+import '../services/sse_notification_service.dart';
+import '../services/fcm_service.dart';
 import '../theme/app_theme.dart';
 import '../admin/screens/admin_shell_screen.dart';
 import '../teacher/routes/teacher_routes.dart';
@@ -19,6 +21,39 @@ import 'app_routes.dart';
 
 /// Central application router coordinating namespace-specific role routes.
 class AppRouter {
+  static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static bool _isRedirectingToLogin = false;
+
+  /// Central redirection to login page when 401 or unauthenticated occurs
+  static Future<void> redirectToLogin([BuildContext? context]) async {
+    if (_isRedirectingToLogin) return;
+    _isRedirectingToLogin = true;
+
+    try {
+      try {
+        await FcmService.unregisterToken();
+      } catch (_) {}
+      SseNotificationService.stopListening();
+      await StorageService.clearSession();
+
+      if (context != null && context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.login,
+          (route) => false,
+        );
+      } else if (navigatorKey.currentState != null) {
+        navigatorKey.currentState!.pushNamedAndRemoveUntil(
+          AppRoutes.login,
+          (route) => false,
+        );
+      }
+    } finally {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isRedirectingToLogin = false;
+      });
+    }
+  }
+
   /// Top-level route generator.
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     final name = settings.name ?? AppRoutes.initial;
@@ -104,6 +139,12 @@ class _RoleDispatcherScreenState extends State<RoleDispatcherScreen> {
     final token = await StorageService.getToken();
     final jwtRole = JwtDecoder.getRole(token);
     final user = await StorageService.getCurrentUser();
+
+    if (token != null) {
+      try {
+        FcmService.syncDeviceToken().catchError((_) {});
+      } catch (_) {}
+    }
 
     if (mounted) {
       setState(() {

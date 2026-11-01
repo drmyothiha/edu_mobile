@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 import 'routes/app_routes.dart';
 import 'routes/app_router.dart';
 import 'theme/app_theme.dart';
+import 'services/fcm_service.dart';
 
 /// Custom HttpOverrides to accept self-signed certificates on Android/iOS
-/// for development and on-premise cloud servers.
 class EduHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -27,6 +27,10 @@ void main() async {
   } else {
     SemanticsBinding.instance.ensureSemantics();
   }
+
+  // Initialize Firebase Cloud Messaging
+  await FcmService.initialize();
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -38,12 +42,14 @@ void main() async {
 
 class EduMobileApp extends StatelessWidget {
   final String? initialRoute;
+  final GlobalKey<NavigatorState>? navigatorKey;
 
-  const EduMobileApp({super.key, this.initialRoute});
+  const EduMobileApp({super.key, this.initialRoute, this.navigatorKey});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey ?? AppRouter.navigatorKey,
       title: 'AugmentEd',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,

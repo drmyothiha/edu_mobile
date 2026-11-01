@@ -4,6 +4,7 @@ import '../models/messaging_models.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../services/sse_notification_service.dart';
+import '../routes/app_router.dart';
 import '../theme/app_theme.dart';
 import 'chat_screen.dart';
 import 'login_screen.dart';
@@ -50,21 +51,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
   }
 
   Future<void> _loadData() async {
+    final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      if (mounted) {
+        await AppRouter.redirectToLogin(context);
+      }
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
     });
-
-    final token = await StorageService.getToken();
-    if (token == null) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = 'AUTH_REQUIRED';
-        });
-      }
-      return;
-    }
 
     try {
       final notifs = await ApiService.getNotifications();
@@ -76,6 +74,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
         });
       }
     } catch (e) {
+      if (e is UnauthorizedException ||
+          e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        if (mounted) {
+          await AppRouter.redirectToLogin(context);
+        }
+        return;
+      }
       if (mounted) {
         setState(() {
           _error = e.toString().replaceAll('Exception: ', '');

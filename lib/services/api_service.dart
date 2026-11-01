@@ -1,13 +1,52 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'storage_service.dart';
+import 'sse_notification_service.dart';
+import 'fcm_service.dart';
+import '../routes/app_router.dart';
 import '../models/verifiable_credential.dart';
 import '../models/messaging_models.dart';
 import '../models/guardian_child.dart';
 
+class UnauthorizedException implements Exception {
+  final String message;
+  const UnauthorizedException([this.message = 'Unauthorized (401)']);
+
+  @override
+  String toString() => message;
+}
+
 class ApiService {
+  static Future<void> Function()? onUnauthorized;
+
+  /// Central handler for 401 Unauthorized or expired authentication
+  static Future<void> handleUnauthorized([BuildContext? context]) async {
+    try {
+      await FcmService.unregisterToken();
+    } catch (_) {}
+    await StorageService.clearSession();
+    SseNotificationService.stopListening();
+    if (onUnauthorized != null) {
+      await onUnauthorized!();
+    } else {
+      if (context != null && context.mounted) {
+        await AppRouter.redirectToLogin(context);
+      } else {
+        await AppRouter.redirectToLogin();
+      }
+    }
+  }
+
+  static Future<void> _checkResponse(http.BaseResponse response, [String? errorMsg]) async {
+    if (response.statusCode == 401) {
+      await handleUnauthorized();
+      throw UnauthorizedException(errorMsg ?? 'Unauthorized (401)');
+    }
+  }
+
   static Future<Map<String, dynamic>> login(String email, String password) async {
     final baseUrl = await StorageService.getServerUrl();
     final uri = Uri.parse('$baseUrl/api/v1/auth/login');
@@ -137,6 +176,7 @@ class ApiService {
     }
 
     final response = await http.get(uri, headers: headers);
+    await _checkResponse(response, 'Failed to fetch blockchain ID (401)');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = json.decode(response.body) as Map<String, dynamic>;
@@ -153,6 +193,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/api/v1/blockchain/verify?identifier=${Uri.encodeComponent(identifier)}');
 
     final response = await http.get(uri, headers: {'Accept': 'application/json'});
+    await _checkResponse(response, 'Online verification server error (401)');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = json.decode(response.body) as Map<String, dynamic>;
@@ -180,6 +221,7 @@ class ApiService {
       headers: headers,
       body: json.encode(payload),
     );
+    await _checkResponse(response, 'Sync failed (401)');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return json.decode(response.body) as Map<String, dynamic>;
@@ -201,6 +243,7 @@ class ApiService {
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to load classes (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
       return list.cast<Map<String, dynamic>>();
@@ -216,6 +259,7 @@ class ApiService {
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to load class students (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
       return list.cast<Map<String, dynamic>>();
@@ -226,11 +270,16 @@ class ApiService {
   static Future<List<ConversationModel>> getConversations() async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      await handleUnauthorized();
+      throw const UnauthorizedException('Failed to load conversations: Unauthenticated (401)');
+    }
     final uri = Uri.parse('$baseUrl/api/v1/conversations');
     final response = await http.get(uri, headers: {
       'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to load conversations (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
       return list.map((item) => ConversationModel.fromJson(item as Map<String, dynamic>)).toList();
@@ -241,13 +290,17 @@ class ApiService {
   static Future<ConversationModel> getOrCreateConversation({String? studentId, String? teacherId, String? parentId}) async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      await handleUnauthorized();
+      throw const UnauthorizedException('Failed to open conversation: Unauthenticated (401)');
+    }
     final uri = Uri.parse('$baseUrl/api/v1/conversations');
     final response = await http.post(
       uri,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer $token',
       },
       body: json.encode({
         ...?studentId != null ? {'student_id': studentId} : null,
@@ -255,6 +308,7 @@ class ApiService {
         ...?parentId != null ? {'parent_id': parentId} : null,
       }),
     );
+    await _checkResponse(response, 'Failed to open conversation (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return ConversationModel.fromJson(json.decode(response.body) as Map<String, dynamic>);
     }
@@ -268,6 +322,10 @@ class ApiService {
   }) async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      await handleUnauthorized();
+      throw const UnauthorizedException('Failed to load messages: Unauthenticated (401)');
+    }
     final queryParams = <String, String>{
       'limit': limit.toString(),
       if (after != null) 'after': after.toUtc().toIso8601String(),
@@ -276,8 +334,9 @@ class ApiService {
         .replace(queryParameters: queryParams);
     final response = await http.get(uri, headers: {
       'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to load messages (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
       return list
@@ -296,6 +355,10 @@ class ApiService {
   }) async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      await handleUnauthorized();
+      throw const UnauthorizedException('Failed to upload chat media: Unauthenticated (401)');
+    }
     final uri = Uri.parse('$baseUrl/api/v1/media/upload');
 
     try {
@@ -305,7 +368,7 @@ class ApiService {
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
+              'Authorization': 'Bearer $token',
             },
             body: json.encode({
               'filename': filename,
@@ -314,6 +377,8 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 15));
 
+      await _checkResponse(response, 'Failed to upload chat media (401)');
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = json.decode(response.body) as Map<String, dynamic>;
         final url = data['url'] as String?;
@@ -321,6 +386,8 @@ class ApiService {
           return url.startsWith('http') ? url : '$baseUrl$url';
         }
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (_) {}
 
     return 'data:$fallbackMimeType;base64,${base64Encode(bytes)}';
@@ -329,16 +396,21 @@ class ApiService {
   static Future<MessageModel> sendMessage(String conversationId, String content) async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      await handleUnauthorized();
+      throw const UnauthorizedException('Failed to send message: Unauthenticated (401)');
+    }
     final uri = Uri.parse('$baseUrl/api/v1/conversations/$conversationId/messages');
     final response = await http.post(
       uri,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer $token',
       },
       body: json.encode({'content': content}),
     );
+    await _checkResponse(response, 'Failed to send message (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return MessageModel.fromJson(json.decode(response.body) as Map<String, dynamic>);
     }
@@ -348,11 +420,16 @@ class ApiService {
   static Future<List<NotificationModel>> getNotifications() async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      await handleUnauthorized();
+      throw const UnauthorizedException('Failed to load notifications: Unauthenticated (401)');
+    }
     final uri = Uri.parse('$baseUrl/api/v1/notifications?limit=40');
     final response = await http.get(uri, headers: {
       'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to load notifications (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = json.decode(response.body) as Map<String, dynamic>;
       final list = (data['notifications'] as List<dynamic>?) ?? [];
@@ -365,9 +442,10 @@ class ApiService {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
     final uri = Uri.parse('$baseUrl/api/v1/notifications/$notificationId/read');
-    await http.post(uri, headers: {
+    final response = await http.post(uri, headers: {
       if (token != null) 'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to mark notification read (401)');
   }
 
   static Future<List<AnnouncementModel>> getParentAnnouncements() async {
@@ -378,6 +456,7 @@ class ApiService {
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to load announcements (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
       return list.map((item) => AnnouncementModel.fromJson(item as Map<String, dynamic>)).toList();
@@ -395,12 +474,16 @@ class ApiService {
         if (token != null) 'Authorization': 'Bearer $token',
       }).timeout(const Duration(seconds: 10));
 
+      await _checkResponse(response, 'Failed to load children (401)');
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final list = json.decode(response.body) as List<dynamic>;
         final children = list.map((item) => GuardianChild.fromJson(item as Map<String, dynamic>)).toList();
         await StorageService.saveGuardianChildren(children);
         return children;
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       debugPrint('getMyChildren error: $e');
     }
@@ -411,7 +494,7 @@ class ApiService {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
     final uri = Uri.parse('$baseUrl/api/v1/devices/token');
-    await http.post(
+    final response = await http.post(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -422,13 +505,14 @@ class ApiService {
         'platform': platform,
       }),
     );
+    await _checkResponse(response, 'Failed to register device token (401)');
   }
 
   static Future<void> unregisterDeviceToken(String fcmToken) async {
     final baseUrl = await StorageService.getServerUrl();
     final token = await StorageService.getToken();
     final uri = Uri.parse('$baseUrl/api/v1/devices/token');
-    await http.delete(
+    final response = await http.delete(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -438,6 +522,7 @@ class ApiService {
         'fcm_token': fcmToken,
       }),
     );
+    await _checkResponse(response, 'Failed to unregister device token (401)');
   }
 
   /// Confirm pairing an unprovisioned Gate Kiosk PWA to this school
@@ -471,6 +556,8 @@ class ApiService {
         }),
       ).timeout(const Duration(seconds: 5));
 
+      await _checkResponse(response, 'Pairing failed (401)');
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return json.decode(response.body) as Map<String, dynamic>;
       } else {
@@ -481,6 +568,8 @@ class ApiService {
         } catch (_) {}
         throw Exception(errMsg);
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       final user = await StorageService.getUser();
       final schoolName = user?['school_name'] ?? 'Basic Education High School (Pilot)';
@@ -519,6 +608,7 @@ class ApiService {
     };
 
     final response = await http.get(uri, headers: headers);
+    await _checkResponse(response, 'Failed to fetch timetable (401)');
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return json.decode(response.body) as Map<String, dynamic>;
     } else {
@@ -541,6 +631,7 @@ class ApiService {
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to fetch weekly summaries (401)');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
@@ -559,6 +650,7 @@ class ApiService {
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to fetch parent weekly summaries (401)');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
@@ -573,10 +665,11 @@ class ApiService {
     final token = await StorageService.getToken();
     final uri = Uri.parse('$baseUrl/api/v1/parents/weekly-summaries/$summaryId/read');
 
-    await http.post(uri, headers: {
+    final response = await http.post(uri, headers: {
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to mark summary read (401)');
   }
 
   /// M07: Submit formal record appeal for a student or child
@@ -612,6 +705,7 @@ class ApiService {
         'evidence_notes': evidenceNotes,
       }),
     );
+    await _checkResponse(response, 'Failed to submit appeal (401)');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return json.decode(response.body) as Map<String, dynamic>;
@@ -636,6 +730,7 @@ class ApiService {
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     });
+    await _checkResponse(response, 'Failed to fetch appeals (401)');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final list = json.decode(response.body) as List<dynamic>;
@@ -658,6 +753,7 @@ class ApiService {
       // DELETE photo
       final uri = Uri.parse('$baseUrl/api/v1/students/$studentId/photo');
       final response = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 10));
+      await _checkResponse(response, 'Failed to delete child photo (401)');
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return json.decode(response.body) as Map<String, dynamic>;
       }
@@ -678,6 +774,7 @@ class ApiService {
         headers: jsonHeaders,
         body: json.encode({'photo_url': trimmed, 'avatar_url': trimmed}),
       ).timeout(const Duration(seconds: 15));
+      await _checkResponse(response, 'Failed to update photo (401)');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return json.decode(response.body) as Map<String, dynamic>;
@@ -701,10 +798,13 @@ class ApiService {
 
         final streamedResponse = await request.send().timeout(const Duration(seconds: 20));
         final response = await http.Response.fromStream(streamedResponse);
+        await _checkResponse(response, 'Failed to upload photo (401)');
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return json.decode(response.body) as Map<String, dynamic>;
         }
+      } on UnauthorizedException {
+        rethrow;
       } catch (e) {
         debugPrint('[ApiService] Multipart photo upload attempt failed, falling back to Base64 JSON: $e');
       }
@@ -723,6 +823,7 @@ class ApiService {
         headers: jsonHeaders,
         body: json.encode({'photo_url': base64DataUri, 'avatar_url': base64DataUri}),
       ).timeout(const Duration(seconds: 25));
+      await _checkResponse(response, 'Failed to upload photo (401)');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return json.decode(response.body) as Map<String, dynamic>;

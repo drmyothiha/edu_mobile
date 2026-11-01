@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../services/sse_notification_service.dart';
 import '../services/voice_audio_service.dart';
+import '../routes/app_router.dart';
 import '../theme/app_theme.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -159,6 +160,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadConversation() async {
+    final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) {
+      if (mounted) {
+        await AppRouter.redirectToLogin(context);
+      }
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       ConversationModel conv;
@@ -207,6 +216,14 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       await _loadMessages(silent: false);
     } catch (e) {
+      if (e is UnauthorizedException ||
+          e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        if (mounted) {
+          await AppRouter.redirectToLogin(context);
+        }
+        return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading chat: $e')),
@@ -231,7 +248,16 @@ class _ChatScreenState extends State<ChatScreen> {
           _scrollToBottom();
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (e is UnauthorizedException ||
+          e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        if (mounted) {
+          await AppRouter.redirectToLogin(context);
+        }
+        return;
+      }
+    }
   }
 
   /// Incremental cursor delta sync: queries only messages created strictly after the latest loaded message.
@@ -262,7 +288,16 @@ class _ChatScreenState extends State<ChatScreen> {
       if (wasAtBottom) {
         _scrollToBottom();
       }
-    } catch (_) {}
+    } catch (e) {
+      if (e is UnauthorizedException ||
+          e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        if (mounted) {
+          await AppRouter.redirectToLogin(context);
+        }
+        return;
+      }
+    }
   }
 
   bool _isAtBottom() {
@@ -311,6 +346,14 @@ class _ChatScreenState extends State<ChatScreen> {
         _scrollToBottom();
       }
     } catch (e) {
+      if (e is UnauthorizedException ||
+          e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        if (mounted) {
+          await AppRouter.redirectToLogin(context);
+        }
+        return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to send: $e')),
@@ -353,6 +396,14 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       await _sendRawContent('[IMAGE:$fileName:$mediaUrl]');
     } catch (e) {
+      if (e is UnauthorizedException ||
+          e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        if (mounted) {
+          await AppRouter.redirectToLogin(context);
+        }
+        return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not pick image file: $e')),
@@ -385,6 +436,14 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       await _sendRawContent('[VIDEO:$fileName:$estSeconds:$mediaUrl]');
     } catch (e) {
+      if (e is UnauthorizedException ||
+          e.toString().contains('401') ||
+          e.toString().toLowerCase().contains('unauthorized')) {
+        if (mounted) {
+          await AppRouter.redirectToLogin(context);
+        }
+        return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not pick video file: $e')),

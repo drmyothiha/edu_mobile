@@ -1,0 +1,12 @@
+{
+  "name": "edu-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "flutter run -d chrome",
+    "dev:android": "flutter run -d android",
+    "build": "flutter build apk",
+    "test": "flutter test",
+    "clean": "flutter clean"
+  }
+}
