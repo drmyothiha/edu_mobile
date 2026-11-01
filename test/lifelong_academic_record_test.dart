@@ -173,14 +173,6 @@ void main() {
       // Tap back to "Timeline (KG → BEPS)"
       await tester.tap(find.text('Timeline (KG → BEPS)'));
       await tester.pumpAndSettle();
-
-      // Export Lifelong Transcript
-      final exportBtn = find.text('Export Verifiable Lifelong Transcript (KG → PhD)');
-      await tester.ensureVisible(exportBtn);
-      await tester.tap(exportBtn);
-      await tester.pump();
-
-      expect(find.textContaining('Official Lifelong Transcript generated'), findsOneWidget);
     });
   });
 

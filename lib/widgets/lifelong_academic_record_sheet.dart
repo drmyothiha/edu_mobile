@@ -194,11 +194,6 @@ class _LifelongAcademicRecordSheetState
                           total: timelineEntries.length,
                         );
                       }),
-
-                    const SizedBox(height: 16),
-
-                    // 6. Verification & Official Export Footer
-                    _buildExportAndAttestationFooter(),
                   ],
                 ),
               ),
@@ -982,97 +977,5 @@ class _LifelongAcademicRecordSheetState
         ),
       );
     }
-  }
-
-  /// Official Export Footer in White Theme
-  Widget _buildExportAndAttestationFooter() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.verified_user, color: Color(0xFF0F172A), size: 18),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Comprehensive Lifelong Learner Record (CLR)',
-                  style: TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Official educational record trajectory compliant with the Myanmar National Qualifications Framework (MNQF).',
-            style: TextStyle(color: Color(0xFF64748B), fontSize: 10, height: 1.4),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 13),
-              ),
-              icon: const Icon(Icons.download_done, color: Colors.white, size: 18),
-              label: const Text(
-                'Export Verifiable Lifelong Transcript (KG → PhD)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: Colors.black,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    content: Row(
-                      children: [
-                        const Icon(
-                          Icons.check_circle,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Official Lifelong Transcript generated for ${widget.profile.studentName} (KG to ${widget.profile.highestLevelEntry.stageCode})',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
