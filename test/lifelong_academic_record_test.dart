@@ -110,7 +110,7 @@ void main() {
   });
 
   group('Lifelong Academic Record Modal UI Tests', () {
-    testWidgets('Renders all levels from KG to PhD and expands cryptographic proof', (tester) async {
+    testWidgets('Renders timeline only up to highest active level and removes honors and W3C VC', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -145,34 +145,34 @@ void main() {
       expect(find.text('Ma Su Myat Noe'), findsOneWidget);
       expect(find.text('HIGHEST LEVEL ATTAINED / ACTIVE'), findsOneWidget);
 
-      // Check trajectory stepper nodes
+      // Timeline only shows up to highest active level (KG and BEPS for Grade 5-A)
       expect(find.text('KG'), findsWidgets);
       expect(find.text('BEPS'), findsWidgets);
-      expect(find.text('BEMS'), findsWidgets);
-      expect(find.text('BEHS'), findsWidgets);
-      expect(find.text('B.Sc. / B.C.Sc.'), findsWidgets);
-      expect(find.text('M.Sc.'), findsWidgets);
-      expect(find.text('Ph.D.'), findsWidgets);
+      // Future pathway tiers above highest active are not shown
+      expect(find.text('BEMS'), findsNothing);
+      expect(find.text('BEHS'), findsNothing);
+      expect(find.text('Ph.D.'), findsNothing);
+
+      // Verify removal of honors & badges
+      expect(find.text('Class Punctuality Star'), findsNothing);
+      expect(find.text('Primary Peer Mentor Distinction'), findsNothing);
+
+      // Verify removal of W3C Verifiable Credential expansion
+      expect(find.text('W3C Verifiable Credential & Blockchain Proof'), findsNothing);
+      expect(find.text('Credential URI'), findsNothing);
+      expect(find.text('Polygon Proof Hash'), findsNothing);
 
       // Check filter chips
-      expect(find.text('All Levels (KG to PhD)'), findsOneWidget);
-      expect(find.text('Highest Level & Completed'), findsOneWidget);
+      expect(find.text('Timeline (KG → BEPS)'), findsOneWidget);
+      expect(find.text('Highest Active (BEPS)'), findsOneWidget);
 
-      // Tap filter "Highest Level & Completed"
-      await tester.tap(find.text('Highest Level & Completed'));
+      // Tap filter "Highest Active (BEPS)"
+      await tester.tap(find.text('Highest Active (BEPS)'));
       await tester.pumpAndSettle();
 
-      // Tap back to "All Levels (KG to PhD)"
-      await tester.tap(find.text('All Levels (KG to PhD)'));
+      // Tap back to "Timeline (KG → BEPS)"
+      await tester.tap(find.text('Timeline (KG → BEPS)'));
       await tester.pumpAndSettle();
-
-      // Expand W3C VC proof on first visible card
-      final vcExpansion = find.text('W3C Verifiable Credential & Blockchain Proof').first;
-      await tester.tap(vcExpansion);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Credential URI'), findsOneWidget);
-      expect(find.text('Polygon Proof Hash'), findsOneWidget);
 
       // Export Lifelong Transcript
       final exportBtn = find.text('Export Verifiable Lifelong Transcript (KG → PhD)');
@@ -231,7 +231,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Check student cards have KG -> PhD badge and full record button
+      // Tap on student contact from the Google Contact list to open detail screen
+      final studentContact = find.text('Ma Su Myat Noe (မစုမြတ်နိုး)').first;
+      await tester.ensureVisible(studentContact);
+      await tester.tap(studentContact);
+      await tester.pumpAndSettle();
+
+      // Check student detail page has KG -> PhD badge and full record button
       expect(find.text('KG → PhD'), findsWidgets);
       expect(
         find.text('View Lifelong Academic Record (KG to PhD Level)'),

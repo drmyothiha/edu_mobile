@@ -37,11 +37,11 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadShorebirdPatch();
-    // Default demo helper if preselected role was provided
+    // Default demo helper
     if (widget.preselectedRole == AppUserRole.guardian) {
       _emailController.text = '0922222';
       _passwordController.text = 'mth';
-    } else if (widget.preselectedRole == AppUserRole.teacher) {
+    } else {
       _emailController.text = '0911111';
       _passwordController.text = 'mth';
     }

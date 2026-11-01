@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/lifelong_academic_record.dart';
 
-/// Interactive modal sheet displaying a student's lifelong academic record from KG to PhD level (or highest level).
+/// Interactive modal sheet displaying a student's lifelong academic record
+/// in a clean, modern White Theme with high-contrast monochrome accents,
+/// with a vertical timeline running from KG at the lowest (bottom) to the Latest Class at the topmost (top).
 void showLifelongAcademicRecordModal(
   BuildContext context, {
   required LifelongAcademicProfile profile,
@@ -26,28 +28,8 @@ class LifelongAcademicRecordSheet extends StatefulWidget {
 
 class _LifelongAcademicRecordSheetState
     extends State<LifelongAcademicRecordSheet> {
-  // 'all', 'active_only', or specific stage code e.g. 'KG', 'PHD'
+  // 'all', 'active_only', or specific stage code e.g. 'KG', 'BEPS'
   String _selectedFilter = 'all';
-  final Set<String> _expandedCredentials = {};
-
-  Color _getStageColor(AcademicStage stage) {
-    switch (stage) {
-      case AcademicStage.kg:
-        return const Color(0xFFF59E0B); // Amber
-      case AcademicStage.primary:
-        return const Color(0xFF10B981); // Emerald
-      case AcademicStage.middleSchool:
-        return const Color(0xFF0EA5E9); // Sky blue
-      case AcademicStage.highSchool:
-        return const Color(0xFF6366F1); // Indigo
-      case AcademicStage.bachelor:
-        return const Color(0xFF2563EB); // Royal Blue
-      case AcademicStage.master:
-        return const Color(0xFF9333EA); // Purple
-      case AcademicStage.phd:
-        return const Color(0xFFE11D48); // Rose / Crimson
-    }
-  }
 
   IconData _getStageIcon(AcademicStage stage) {
     switch (stage) {
@@ -71,29 +53,35 @@ class _LifelongAcademicRecordSheetState
   @override
   Widget build(BuildContext context) {
     final highestEntry = widget.profile.highestLevelEntry;
-    final highestColor = _getStageColor(highestEntry.stage);
 
-    final filteredEntries = widget.profile.entries.where((e) {
-      if (_selectedFilter == 'all') return true;
-      if (_selectedFilter == 'active_only') {
-        return e.status != AcademicStatus.pathway;
-      }
-      return e.stageCode.toUpperCase() == _selectedFilter.toUpperCase();
-    }).toList();
+    // Timeline ONLY shows up to the highest active level
+    // (with highest active class at the TOPMOST and KG at the LOWEST/bottom)
+    final entriesUpToActive = widget.profile.completedAndCurrentEntries;
+
+    List<AcademicRecordEntry> timelineEntries;
+    if (_selectedFilter == 'all' || _selectedFilter == 'active_only') {
+      timelineEntries = entriesUpToActive.reversed.toList();
+    } else {
+      final matches = entriesUpToActive
+          .where((e) => e.stageCode.toUpperCase() == _selectedFilter.toUpperCase())
+          .toList();
+      timelineEntries = matches.isNotEmpty ? matches : entriesUpToActive.reversed.toList();
+    }
 
     return DraggableScrollableSheet(
       initialChildSize: 0.90,
       minChildSize: 0.60,
       maxChildSize: 0.96,
       builder: (_, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF0D1117), // Premium dark background
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: Colors.white, // Clean modern white theme
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: Colors.grey.shade300),
           boxShadow: [
             BoxShadow(
-              color: Colors.black54,
-              blurRadius: 20,
-              offset: Offset(0, -4),
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
             ),
           ],
         ),
@@ -104,28 +92,29 @@ class _LifelongAcademicRecordSheetState
               child: Container(
                 margin: const EdgeInsets.only(top: 12, bottom: 8),
                 width: 48,
-                height: 5,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
 
-            // Top Header Bar
+            // Top Header Bar in White Theme
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
-                      color: highestColor.withValues(alpha: 0.15),
+                      color: Colors.grey.shade100,
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: Icon(Icons.history_edu, color: highestColor, size: 20),
+                    child: const Icon(Icons.history_edu, color: Color(0xFF0F172A), size: 20),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,17 +122,17 @@ class _LifelongAcademicRecordSheetState
                         Text(
                           'Lifelong Academic Record',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF0F172A),
                             fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.2,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'KG to PhD Level Educational Trajectory (တစ်သက်တာ ပညာသင်မှတ်တမ်း)',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: Color(0xFF64748B),
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
                           ),
@@ -154,52 +143,61 @@ class _LifelongAcademicRecordSheetState
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.white70, size: 22),
+                    icon: const Icon(Icons.close, color: Color(0xFF0F172A), size: 22),
                   ),
                 ],
               ),
             ),
 
-            const Divider(color: Color(0xFF21262D), height: 1),
+            Divider(color: Colors.grey.shade200, height: 1),
 
             // Scrollable Content
             Expanded(
               child: SingleChildScrollView(
                 controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Student Identity & Highest Level Banner
-                    _buildStudentIdentityBanner(highestEntry, highestColor),
+                    // 1. Student Identity & Highest Level Banner (White Theme)
+                    _buildStudentIdentityBanner(highestEntry),
                     const SizedBox(height: 16),
 
-                    // 2. Interactive KG-to-PhD Trajectory Timeline
-                    _buildTrajectoryTimelineBar(),
+                    // 2. Timeline Bar with KG lowest & Latest class topmost (up to highest active)
+                    _buildTrajectoryTimelineBar(highestEntry),
                     const SizedBox(height: 16),
 
-                    // 3. Filter Controls
-                    _buildFilterControls(),
-                    const SizedBox(height: 14),
+                    // 3. Filter Controls (White Theme)
+                    _buildFilterControls(highestEntry),
+                    const SizedBox(height: 16),
 
-                    // 4. Academic Record Cards List
-                    if (filteredEntries.isEmpty)
+                    // 4. Timeline Header Indicator (Latest Topmost -> KG Lowest)
+                    _buildTimelineDirectionIndicator(),
+                    const SizedBox(height: 12),
+
+                    // 5. Academic Record Timeline Cards (Latest Topmost down to KG Lowest)
+                    if (timelineEntries.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(24),
                         alignment: Alignment.center,
-                        child: const Text(
+                        child: Text(
                           'No records matching selected filter.',
-                          style: TextStyle(color: Colors.white60),
+                          style: TextStyle(color: Colors.grey.shade600),
                         ),
                       )
                     else
-                      ...filteredEntries.map(
-                        (entry) => _buildAcademicEntryCard(entry),
-                      ),
+                      ...List.generate(timelineEntries.length, (idx) {
+                        final entry = timelineEntries[idx];
+                        return _buildTimelineItem(
+                          entry: entry,
+                          index: idx,
+                          total: timelineEntries.length,
+                        );
+                      }),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                    // 5. Verification & Official Export Footer
+                    // 6. Verification & Official Export Footer
                     _buildExportAndAttestationFooter(),
                   ],
                 ),
@@ -211,26 +209,14 @@ class _LifelongAcademicRecordSheetState
     );
   }
 
-  Widget _buildStudentIdentityBanner(
-    AcademicRecordEntry highestEntry,
-    Color highestColor,
-  ) {
+  /// Student Identity Banner styled in White Theme with clean dark borders
+  Widget _buildStudentIdentityBanner(AcademicRecordEntry highestEntry) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF161B22),
-            highestColor.withValues(alpha: 0.12),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: highestColor.withValues(alpha: 0.35),
-          width: 1.2,
-        ),
+        border: Border.all(color: Colors.grey.shade300, width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,13 +225,13 @@ class _LifelongAcademicRecordSheetState
             children: [
               CircleAvatar(
                 radius: 26,
-                backgroundColor: highestColor.withValues(alpha: 0.25),
+                backgroundColor: Colors.grey.shade700,
                 child: Text(
                   widget.profile.studentName.isNotEmpty
                       ? widget.profile.studentName[0].toUpperCase()
                       : 'S',
-                  style: TextStyle(
-                    color: highestColor,
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                   ),
@@ -262,7 +248,7 @@ class _LifelongAcademicRecordSheetState
                           child: Text(
                             widget.profile.studentName,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFF0F172A),
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
                             ),
@@ -276,13 +262,14 @@ class _LifelongAcademicRecordSheetState
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.grey.shade300),
                           ),
                           child: Text(
                             widget.profile.rollNo,
                             style: const TextStyle(
-                              color: Colors.white70,
+                              color: Color(0xFF0F172A),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -294,7 +281,7 @@ class _LifelongAcademicRecordSheetState
                     Text(
                       'National ID: ${widget.profile.nationalStudentId}',
                       style: const TextStyle(
-                        color: Color(0xFF94A3B8),
+                        color: Color(0xFF64748B),
                         fontSize: 11,
                         fontFamily: 'monospace',
                       ),
@@ -305,23 +292,21 @@ class _LifelongAcademicRecordSheetState
             ],
           ),
           const SizedBox(height: 14),
-          const Divider(color: Color(0xFF30363D), height: 1),
+          Divider(color: Colors.grey.shade300, height: 1),
           const SizedBox(height: 12),
 
-          // Highest Level Highlight Card
+          // Highest Level Highlight Card (White Card with Solid Black Tag)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1117),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: highestColor.withValues(alpha: 0.4),
-              ),
+              border: Border.all(color: Colors.grey.shade300, width: 1.0),
             ),
             child: Row(
               children: [
-                Icon(_getStageIcon(highestEntry.stage), color: highestColor, size: 22),
-                const SizedBox(width: 10),
+                Icon(_getStageIcon(highestEntry.stage), color: const Color(0xFF0F172A), size: 22),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,15 +319,16 @@ class _LifelongAcademicRecordSheetState
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: highestColor,
+                              color: Colors.grey.shade200,
                               borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.grey.shade300),
                             ),
-                            child: const Text(
+                            child: Text(
                               'HIGHEST LEVEL ATTAINED / ACTIVE',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Colors.grey.shade800,
                                 fontSize: 9,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
@@ -350,7 +336,7 @@ class _LifelongAcademicRecordSheetState
                           Text(
                             highestEntry.academicYears,
                             style: const TextStyle(
-                              color: Colors.white60,
+                              color: Color(0xFF64748B),
                               fontSize: 10,
                             ),
                           ),
@@ -360,15 +346,15 @@ class _LifelongAcademicRecordSheetState
                       Text(
                         highestEntry.levelTitle,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF0F172A),
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       Text(
                         highestEntry.degreeOrCertificate,
-                        style: TextStyle(
-                          color: highestColor,
+                        style: const TextStyle(
+                          color: Color(0xFF475569),
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
@@ -384,28 +370,30 @@ class _LifelongAcademicRecordSheetState
     );
   }
 
-  Widget _buildTrajectoryTimelineBar() {
+  /// Trajectory Stepper Bar in White Theme (shows up to highest active level)
+  Widget _buildTrajectoryTimelineBar(AcademicRecordEntry highestEntry) {
+    final activeEntries = widget.profile.completedAndCurrentEntries;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(
               children: [
-                Icon(Icons.timeline, color: Color(0xFF38BDF8), size: 16),
-                SizedBox(width: 6),
+                const Icon(Icons.timeline, color: Color(0xFF0F172A), size: 16),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'KG ➔ Primary ➔ Middle ➔ High ➔ Bachelor ➔ Master ➔ PhD',
-                    style: TextStyle(
-                      color: Color(0xFFE2E8F0),
+                    'Active Pathway: ${activeEntries.map((e) => e.stageCode).join(' ➔ ')}',
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                     ),
@@ -419,10 +407,9 @@ class _LifelongAcademicRecordSheetState
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: widget.profile.entries.map((entry) {
+              children: activeEntries.map((entry) {
                 final isSelected =
                     _selectedFilter.toUpperCase() == entry.stageCode.toUpperCase();
-                final stageColor = _getStageColor(entry.stage);
                 final isCurrentOrCompleted = entry.status != AcademicStatus.pathway;
 
                 return GestureDetector(
@@ -437,18 +424,18 @@ class _LifelongAcademicRecordSheetState
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? stageColor.withValues(alpha: 0.25)
+                          ? Colors.grey.shade800
                           : isCurrentOrCompleted
-                              ? const Color(0xFF21262D)
-                              : const Color(0xFF161B22),
+                              ? Colors.white
+                              : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: isSelected
-                            ? stageColor
+                            ? Colors.grey.shade600
                             : isCurrentOrCompleted
-                                ? stageColor.withValues(alpha: 0.4)
-                                : const Color(0xFF30363D),
-                        width: isSelected ? 1.5 : 1,
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade200,
+                        width: 1.0,
                       ),
                     ),
                     child: Column(
@@ -464,19 +451,25 @@ class _LifelongAcademicRecordSheetState
                                       ? Icons.check_circle
                                       : Icons.radio_button_unchecked,
                               size: 13,
-                              color: entry.isHighestActiveLevel
-                                  ? const Color(0xFFFBBF24)
-                                  : entry.isCompleted
-                                      ? const Color(0xFF34D399)
-                                      : const Color(0xFF64748B),
+                              color: isSelected
+                                  ? Colors.white
+                                  : entry.isHighestActiveLevel
+                                      ? Colors.black
+                                      : entry.isCompleted
+                                          ? const Color(0xFF1E293B)
+                                          : Colors.grey.shade400,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               entry.stageCode,
                               style: TextStyle(
-                                color: isCurrentOrCompleted ? Colors.white : Colors.white60,
+                                color: isSelected
+                                    ? Colors.white
+                                    : isCurrentOrCompleted
+                                        ? const Color(0xFF0F172A)
+                                        : Colors.grey.shade600,
                                 fontSize: 11,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ],
@@ -490,12 +483,12 @@ class _LifelongAcademicRecordSheetState
                                   : 'Target',
                           style: TextStyle(
                             fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: entry.isHighestActiveLevel
-                                ? const Color(0xFFFBBF24)
-                                : entry.isCompleted
-                                    ? const Color(0xFF34D399)
-                                    : const Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w700,
+                            color: isSelected
+                                ? Colors.white
+                                : entry.isHighestActiveLevel
+                                    ? const Color(0xFF0F172A)
+                                    : Colors.grey.shade600,
                           ),
                         ),
                       ],
@@ -510,16 +503,23 @@ class _LifelongAcademicRecordSheetState
     );
   }
 
-  Widget _buildFilterControls() {
-    return Row(
-      children: [
-        _buildFilterChip(label: 'All Levels (KG to PhD)', filterKey: 'all'),
-        const SizedBox(width: 8),
-        _buildFilterChip(
-          label: 'Highest Level & Completed',
-          filterKey: 'active_only',
-        ),
-      ],
+  /// Filter Controls styled in White Theme
+  Widget _buildFilterControls(AcademicRecordEntry highestEntry) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildFilterChip(
+            label: 'Timeline (KG → ${highestEntry.stageCode})',
+            filterKey: 'all',
+          ),
+          const SizedBox(width: 8),
+          _buildFilterChip(
+            label: 'Highest Active (${highestEntry.stageCode})',
+            filterKey: 'active_only',
+          ),
+        ],
+      ),
     );
   }
 
@@ -528,57 +528,184 @@ class _LifelongAcademicRecordSheetState
     return GestureDetector(
       onTap: () => setState(() => _selectedFilter = filterKey),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF4C8DFF).withValues(alpha: 0.2)
-              : const Color(0xFF161B22),
+          color: isSelected ? Colors.grey.shade800 : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFF4C8DFF) : const Color(0xFF30363D),
+            color: isSelected ? Colors.grey.shade600 : Colors.grey.shade300,
+            width: 1.0,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? const Color(0xFF93C5FD) : const Color(0xFF94A3B8),
+            color: isSelected ? Colors.white : const Color(0xFF334155),
             fontSize: 11,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
           ),
         ),
       ),
     );
   }
 
+  /// Indicator highlighting the requested timeline direction:
+  /// From Latest Class (TOPMOST) down to Kindergarten (LOWEST)
+  Widget _buildTimelineDirectionIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.arrow_upward, size: 14, color: Color(0xFF0F172A)),
+              SizedBox(width: 6),
+              Text(
+                'LATEST CLASS (TOPMOST)',
+                style: TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          Icon(Icons.more_vert, size: 14, color: Colors.grey),
+          Row(
+            children: [
+              Text(
+                'KG LEVEL (LOWEST)',
+                style: TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              SizedBox(width: 6),
+              Icon(Icons.arrow_downward, size: 14, color: Color(0xFF475569)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Individual Timeline Card connected via a vertical timeline line
+  Widget _buildTimelineItem({
+    required AcademicRecordEntry entry,
+    required int index,
+    required int total,
+  }) {
+    final isTopmost = index == 0;
+    final isLowest = index == total - 1;
+    final isLatestActive = entry.isHighestActiveLevel;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Vertical Timeline Line & Node in White Theme
+          SizedBox(
+            width: 32,
+            child: Column(
+              children: [
+                // Top line
+                Container(
+                  width: 2,
+                  height: isTopmost ? 14 : 18,
+                  color: isTopmost ? Colors.transparent : Colors.grey.shade300,
+                ),
+                // Timeline Node
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: isLatestActive ? Colors.grey.shade700 : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isLatestActive ? Colors.grey.shade500 : Colors.grey.shade300,
+                      width: isLatestActive ? 2 : 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      isLatestActive
+                          ? Icons.star
+                          : entry.isCompleted
+                              ? Icons.check
+                              : Icons.circle,
+                      size: isLatestActive ? 12 : 10,
+                      color: isLatestActive ? Colors.white : Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+                // Bottom connecting line
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isLowest ? Colors.transparent : Colors.grey.shade300,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Main Academic Entry Card
+          Expanded(
+            child: _buildAcademicEntryCard(entry),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Academic Entry Card in clean White Theme
   Widget _buildAcademicEntryCard(AcademicRecordEntry entry) {
-    final stageColor = _getStageColor(entry.stage);
-    final isCredentialExpanded = _expandedCredentials.contains(entry.stageCode);
+    final isLatestActive = entry.isHighestActiveLevel;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: entry.isHighestActiveLevel
-              ? stageColor.withValues(alpha: 0.6)
+          color: isLatestActive
+              ? Colors.grey.shade400
               : entry.isCompleted
-                  ? const Color(0xFF30363D)
-                  : const Color(0xFF21262D),
-          width: entry.isHighestActiveLevel ? 1.5 : 1,
+                  ? Colors.grey.shade300
+                  : Colors.grey.shade200,
+          width: isLatestActive ? 1.4 : 1.0,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card Header
+          // Card Header in White Theme
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: stageColor.withValues(alpha: 0.1),
+              color: isLatestActive
+                  ? const Color(0xFFF1F5F9)
+                  : const Color(0xFFF8FAFC),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
               border: Border(
-                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+                bottom: BorderSide(color: Colors.grey.shade200),
               ),
             ),
             child: Row(
@@ -586,10 +713,15 @@ class _LifelongAcademicRecordSheetState
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: stageColor.withValues(alpha: 0.2),
+                    color: Colors.white,
                     shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
-                  child: Icon(_getStageIcon(entry.stage), color: stageColor, size: 18),
+                  child: Icon(
+                    _getStageIcon(entry.stage),
+                    color: const Color(0xFF0F172A),
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -600,8 +732,8 @@ class _LifelongAcademicRecordSheetState
                         children: [
                           Text(
                             entry.stageCode,
-                            style: TextStyle(
-                              color: stageColor,
+                            style: const TextStyle(
+                              color: Color(0xFF0F172A),
                               fontSize: 12,
                               fontWeight: FontWeight.w900,
                             ),
@@ -611,7 +743,7 @@ class _LifelongAcademicRecordSheetState
                             child: Text(
                               entry.levelTitle,
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFF0F172A),
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -623,7 +755,7 @@ class _LifelongAcademicRecordSheetState
                       Text(
                         entry.burmeseTitle,
                         style: const TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: Color(0xFF64748B),
                           fontSize: 10,
                         ),
                       ),
@@ -645,7 +777,7 @@ class _LifelongAcademicRecordSheetState
                 Text(
                   entry.degreeOrCertificate,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF0F172A),
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
@@ -655,13 +787,13 @@ class _LifelongAcademicRecordSheetState
                 // Institution & Years
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF94A3B8)),
+                    const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF64748B)),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         entry.institution,
                         style: const TextStyle(
-                          color: Color(0xFFCBD5E1),
+                          color: Color(0xFF475569),
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
@@ -672,13 +804,14 @@ class _LifelongAcademicRecordSheetState
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF21262D),
+                        color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.grey.shade300),
                       ),
                       child: Text(
                         entry.academicYears,
                         style: const TextStyle(
-                          color: Colors.white70,
+                          color: Color(0xFF0F172A),
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -688,23 +821,23 @@ class _LifelongAcademicRecordSheetState
                 ),
                 const SizedBox(height: 10),
 
-                // Performance & Grade Badge
+                // Performance & Grade Badge (White Theme)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D1117),
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF30363D)),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.emoji_events_outlined, size: 15, color: Color(0xFFFBBF24)),
+                      const Icon(Icons.emoji_events_outlined, size: 15, color: Color(0xFF0F172A)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           entry.performanceRating,
                           style: const TextStyle(
-                            color: Color(0xFFF8FAFC),
+                            color: Color(0xFF0F172A),
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -720,9 +853,9 @@ class _LifelongAcademicRecordSheetState
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: stageColor.withValues(alpha: 0.08),
+                      color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: stageColor.withValues(alpha: 0.25)),
+                      border: Border.all(color: Colors.grey.shade300),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -731,8 +864,8 @@ class _LifelongAcademicRecordSheetState
                           entry.stage == AcademicStage.phd
                               ? 'DOCTORAL DISSERTATION'
                               : 'CAPSTONE / THESIS',
-                          style: TextStyle(
-                            color: stageColor,
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
                             fontSize: 9,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 0.5,
@@ -742,7 +875,7 @@ class _LifelongAcademicRecordSheetState
                         Text(
                           '"${entry.thesisOrCapstoneTitle}"',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF334155),
                             fontSize: 11,
                             fontStyle: FontStyle.italic,
                           ),
@@ -758,7 +891,7 @@ class _LifelongAcademicRecordSheetState
                   const Text(
                     'Key Competencies & Subjects:',
                     style: TextStyle(
-                      color: Color(0xFF94A3B8),
+                      color: Color(0xFF64748B),
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -771,124 +904,20 @@ class _LifelongAcademicRecordSheetState
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF21262D),
+                          color: const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
                         child: Text(
                           c,
                           style: const TextStyle(
-                            color: Color(0xFFE2E8F0),
+                            color: Color(0xFF0F172A),
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       );
                     }).toList(),
-                  ),
-                ],
-
-                // Honors
-                if (entry.honors.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: entry.honors.map((h) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(top: 2),
-                              child: Icon(
-                                Icons.verified,
-                                size: 12,
-                                color: Color(0xFF34D399),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                h,
-                                style: const TextStyle(
-                                  color: Color(0xFF34D399),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-
-                const SizedBox(height: 10),
-                const Divider(color: Color(0xFF21262D), height: 1),
-                const SizedBox(height: 8),
-
-                // Verifiable Credential Expansion
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      if (isCredentialExpanded) {
-                        _expandedCredentials.remove(entry.stageCode);
-                      } else {
-                        _expandedCredentials.add(entry.stageCode);
-                      }
-                    });
-                  },
-                  child: Row(
-                    children: [
-                      const Icon(Icons.lock_clock_outlined, size: 14, color: Color(0xFF60A5FA)),
-                      const SizedBox(width: 6),
-                      const Expanded(
-                        child: Text(
-                          'W3C Verifiable Credential & Blockchain Proof',
-                          style: TextStyle(
-                            color: Color(0xFF93C5FD),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        isCredentialExpanded
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                        size: 18,
-                        color: const Color(0xFF93C5FD),
-                      ),
-                    ],
-                  ),
-                ),
-
-                if (isCredentialExpanded) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0D1117),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF30363D)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildProofField('Credential URI', entry.credentialId),
-                        const SizedBox(height: 4),
-                        _buildProofField(
-                          'Polygon Proof Hash',
-                          entry.blockchainProofHash,
-                        ),
-                        const SizedBox(height: 4),
-                        _buildProofField(
-                          'Issuing Authority',
-                          'Ministry of Education (DBE) & University Academic Senate',
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ],
@@ -899,21 +928,22 @@ class _LifelongAcademicRecordSheetState
     );
   }
 
+  /// Status Pill in White Theme
   Widget _buildStatusPill(AcademicRecordEntry entry) {
     if (entry.isHighestActiveLevel) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF2563EB).withValues(alpha: 0.2),
+          color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF3B82F6)),
+          border: Border.all(color: Colors.grey.shade300),
         ),
-        child: const Text(
+        child: Text(
           'HIGHEST ACTIVE',
           style: TextStyle(
-            color: Color(0xFF93C5FD),
+            color: Colors.grey.shade800,
             fontSize: 9,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
           ),
         ),
       );
@@ -921,16 +951,16 @@ class _LifelongAcademicRecordSheetState
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF059669).withValues(alpha: 0.2),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF10B981)),
+          border: Border.all(color: Colors.grey.shade300, width: 1.0),
         ),
-        child: const Text(
+        child: Text(
           'COMPLETED',
           style: TextStyle(
-            color: Color(0xFF34D399),
+            color: Colors.grey.shade800,
             fontSize: 9,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
           ),
         ),
       );
@@ -938,14 +968,14 @@ class _LifelongAcademicRecordSheetState
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white24),
+          border: Border.all(color: Colors.grey.shade300),
         ),
-        child: const Text(
+        child: Text(
           'PATHWAY',
           style: TextStyle(
-            color: Color(0xFF94A3B8),
+            color: Colors.grey.shade600,
             fontSize: 9,
             fontWeight: FontWeight.w700,
           ),
@@ -954,52 +984,28 @@ class _LifelongAcademicRecordSheetState
     }
   }
 
-  Widget _buildProofField(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontSize: 10,
-            fontFamily: 'monospace',
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
+  /// Official Export Footer in White Theme
   Widget _buildExportAndAttestationFooter() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF30363D)),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         children: [
           const Row(
             children: [
-              Icon(Icons.verified_user, color: Color(0xFF34D399), size: 18),
+              Icon(Icons.verified_user, color: Color(0xFF0F172A), size: 18),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Comprehensive Lifelong Learner Record (CLR)',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF0F172A),
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -1007,39 +1013,44 @@ class _LifelongAcademicRecordSheetState
           ),
           const SizedBox(height: 6),
           const Text(
-            'Cryptographically verifiable from early childhood (KG) to doctoral (PhD) completion. Compliant with W3C Verifiable Credentials and Myanmar National Qualifications Framework (MNQF).',
-            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, height: 1.4),
+            'Official educational record trajectory compliant with the Myanmar National Qualifications Framework (MNQF).',
+            style: TextStyle(color: Color(0xFF64748B), fontSize: 10, height: 1.4),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: Colors.black,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 13),
               ),
-              icon: const Icon(Icons.download_done, size: 18),
+              icon: const Icon(Icons.download_done, color: Colors.white, size: 18),
               label: const Text(
                 'Export Verifiable Lifelong Transcript (KG → PhD)',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
               ),
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    backgroundColor: const Color(0xFF0F392B),
+                    backgroundColor: Colors.black,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: Colors.grey.shade300),
                     ),
                     content: Row(
                       children: [
                         const Icon(
                           Icons.check_circle,
-                          color: Color(0xFF34D399),
+                          color: Colors.white,
                           size: 18,
                         ),
                         const SizedBox(width: 10),

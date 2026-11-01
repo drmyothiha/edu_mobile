@@ -1576,7 +1576,11 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFF262A38)),
       ),
-      child: Column(children: children),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: Column(children: children),
+      ),
     );
   }
 

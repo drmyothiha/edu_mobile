@@ -134,18 +134,26 @@ class StorageService {
 
   static Future<String?> getToken() async {
     final prefs = await _instance;
-    return prefs.getString(_keyToken);
+    final val = prefs.get(_keyToken);
+    return val?.toString();
   }
 
   static Future<Map<String, dynamic>?> getUser() async {
     final prefs = await _instance;
-    final data = prefs.getString(_keyUser);
+    final data = prefs.get(_keyUser);
     if (data == null) return null;
-    try {
-      return json.decode(data) as Map<String, dynamic>;
-    } catch (_) {
-      return null;
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    if (data is String) {
+      try {
+        final decoded = json.decode(data);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {
+        return null;
+      }
     }
+    return null;
   }
 
   static Future<void> clearSession() async {
@@ -414,15 +422,18 @@ class StorageService {
     if (data != null) {
       try {
         final list = json.decode(data) as List<dynamic>;
-        return list
+        final loaded = list
             .map(
               (e) => WholeChildRecord.fromLocalJson(e as Map<String, dynamic>),
             )
             .toList();
+        if (loaded.length >= 8) {
+          return loaded;
+        }
       } catch (_) {}
     }
 
-    // Default Seed for Grade 5-A Class
+    // Default Seed for Grade 5-A Class (Google Contacts style roster)
     final defaultRecords = [
       WholeChildRecord(
         studentId: 'su.g5@edu.local',
@@ -503,6 +514,234 @@ class StorageService {
         leadershipRole: 'Table Group Leader (Row 2)',
         clubName: 'Junior Red Cross (ကြက်ခြေနီ)',
         citizenshipBadges: ['Helpful Classmate', 'Green Campus Gardener'],
+        syncStatus: 'pending',
+        updatedAt: DateTime.now(),
+      ),
+      WholeChildRecord(
+        studentId: 'hnin.g5@edu.local',
+        rollNo: '5A-03',
+        nationalStudentId: 'MM-EDU-2026-88422',
+        fullName: 'Ma Hnin Yu Wai (မနှင်းယုဝေ)',
+        academicYear: '2026-2027',
+        period: '2026-10',
+        totalSessions: 44,
+        sessionsPresent: 44,
+        sessionsAbsent: 0,
+        attendanceRatePct: 100.0,
+        examScores: {
+          'myanmar': 92.0,
+          'english': 88.0,
+          'mathematics': 90.0,
+          'general_science': 94.0,
+          'social_studies': 90.0,
+        },
+        termGradePoint: 'A+',
+        competencies: ['Creative Writing', 'Mental Math', 'Science Experiments'],
+        heightCm: 135.0,
+        weightKg: 28.5,
+        calculatedBmi: 15.6,
+        bmiCategory: 'Standard Healthy',
+        preferredSports: ['Table Tennis', 'Volleyball'],
+        visionCheck: 'Normal 20/20',
+        hearingCheck: 'Normal',
+        dewormingCompleted: true,
+        knownAllergies: [],
+        dominantEmotionalState: 'Calm & Diligent',
+        engagementIndex: 5.0,
+        teacherNotes: '100% attendance, excellent creative writing skills',
+        leadershipRole: 'Library Assistant',
+        clubName: 'Young Authors Guild',
+        citizenshipBadges: ['Perfect Attendance Star', 'Library Star'],
+        syncStatus: 'pending',
+        updatedAt: DateTime.now(),
+      ),
+      WholeChildRecord(
+        studentId: 'aung.g5@edu.local',
+        rollNo: '5A-04',
+        nationalStudentId: 'MM-EDU-2026-88423',
+        fullName: 'Maung Aung Ko Min (မောင်အောင်ကိုမင်း)',
+        academicYear: '2026-2027',
+        period: '2026-10',
+        totalSessions: 44,
+        sessionsPresent: 41,
+        sessionsAbsent: 3,
+        attendanceRatePct: 93.18,
+        examScores: {
+          'myanmar': 80.0,
+          'english': 72.0,
+          'mathematics': 86.0,
+          'general_science': 84.0,
+          'social_studies': 78.0,
+        },
+        termGradePoint: 'B+',
+        competencies: ['Geometry Basics', 'Team Sports'],
+        heightCm: 140.2,
+        weightKg: 33.0,
+        calculatedBmi: 16.8,
+        bmiCategory: 'Standard Healthy',
+        preferredSports: ['Football', 'Track & Field'],
+        visionCheck: 'Normal 20/20',
+        hearingCheck: 'Normal',
+        dewormingCompleted: true,
+        knownAllergies: [],
+        dominantEmotionalState: 'Energetic',
+        engagementIndex: 4.6,
+        teacherNotes: 'Talented in sports and peer collaboration in science lab',
+        leadershipRole: 'Sports Captain (Primary)',
+        clubName: 'School Athletics Club',
+        citizenshipBadges: ['Sportsmanship Star', 'Team Captain Badge'],
+        syncStatus: 'pending',
+        updatedAt: DateTime.now(),
+      ),
+      WholeChildRecord(
+        studentId: 'ei.g5@edu.local',
+        rollNo: '5A-05',
+        nationalStudentId: 'MM-EDU-2026-88424',
+        fullName: 'Ma Ei Phyu Zin (မအိဖြူဇင်)',
+        academicYear: '2026-2027',
+        period: '2026-10',
+        totalSessions: 44,
+        sessionsPresent: 43,
+        sessionsAbsent: 1,
+        attendanceRatePct: 97.72,
+        examScores: {
+          'myanmar': 90.0,
+          'english': 85.0,
+          'mathematics': 88.0,
+          'general_science': 89.0,
+          'social_studies': 92.0,
+        },
+        termGradePoint: 'A',
+        competencies: ['Myanmar Literature', 'History Timelines'],
+        heightCm: 137.0,
+        weightKg: 30.0,
+        calculatedBmi: 16.0,
+        bmiCategory: 'Standard Healthy',
+        preferredSports: ['Badminton', 'Gymnastics'],
+        visionCheck: 'Normal 20/20',
+        hearingCheck: 'Normal',
+        dewormingCompleted: true,
+        knownAllergies: [],
+        dominantEmotionalState: 'Thoughtful',
+        engagementIndex: 4.8,
+        teacherNotes: 'Consistent high marks in Myanmar literature and social studies',
+        leadershipRole: 'Arts & Culture Organizer',
+        clubName: 'Traditional Arts Society',
+        citizenshipBadges: ['Cultural Heritage Star', 'Helping Hands'],
+        syncStatus: 'pending',
+        updatedAt: DateTime.now(),
+      ),
+      WholeChildRecord(
+        studentId: 'thant.g5@edu.local',
+        rollNo: '5A-06',
+        nationalStudentId: 'MM-EDU-2026-88425',
+        fullName: 'Maung Thant Zin Oo (မောင်သန့်ဇင်ဦး)',
+        academicYear: '2026-2027',
+        period: '2026-10',
+        totalSessions: 44,
+        sessionsPresent: 40,
+        sessionsAbsent: 4,
+        attendanceRatePct: 90.91,
+        examScores: {
+          'myanmar': 76.0,
+          'english': 70.0,
+          'mathematics': 94.0,
+          'general_science': 91.0,
+          'social_studies': 75.0,
+        },
+        termGradePoint: 'B+',
+        competencies: ['Arithmetic Mastery', 'Robotics & Logic'],
+        heightCm: 139.0,
+        weightKg: 32.5,
+        calculatedBmi: 16.8,
+        bmiCategory: 'Standard Healthy',
+        preferredSports: ['Chess', 'Cycling'],
+        visionCheck: 'Normal 20/20',
+        hearingCheck: 'Normal',
+        dewormingCompleted: true,
+        knownAllergies: [],
+        dominantEmotionalState: 'Inquisitive',
+        engagementIndex: 4.7,
+        teacherNotes: 'Outstanding problem solving in Math and logic puzzles',
+        leadershipRole: 'Math Quiz Leader',
+        clubName: 'Junior STEM Club',
+        citizenshipBadges: ['Math Olympiad Medalist', 'Tech Supporter'],
+        syncStatus: 'pending',
+        updatedAt: DateTime.now(),
+      ),
+      WholeChildRecord(
+        studentId: 'yoon.g5@edu.local',
+        rollNo: '5A-07',
+        nationalStudentId: 'MM-EDU-2026-88426',
+        fullName: 'Ma Yoon Nadi (မယွန်းနဒီ)',
+        academicYear: '2026-2027',
+        period: '2026-10',
+        totalSessions: 44,
+        sessionsPresent: 42,
+        sessionsAbsent: 2,
+        attendanceRatePct: 95.45,
+        examScores: {
+          'myanmar': 86.0,
+          'english': 84.0,
+          'mathematics': 82.0,
+          'general_science': 85.0,
+          'social_studies': 88.0,
+        },
+        termGradePoint: 'A',
+        competencies: ['Social Studies Projects', 'English Vocabulary'],
+        heightCm: 136.0,
+        weightKg: 29.0,
+        calculatedBmi: 15.7,
+        bmiCategory: 'Standard Healthy',
+        preferredSports: ['Swimming', 'Badminton'],
+        visionCheck: 'Normal 20/20',
+        hearingCheck: 'Normal',
+        dewormingCompleted: true,
+        knownAllergies: [],
+        dominantEmotionalState: 'Cheerful & Cooperative',
+        engagementIndex: 4.8,
+        teacherNotes: 'Very cooperative in peer groups, actively participates in discussions',
+        leadershipRole: 'Classroom Green Ambassador',
+        clubName: 'Eco-School Initiative',
+        citizenshipBadges: ['Clean Classroom Star', 'Eco Warrior Badge'],
+        syncStatus: 'pending',
+        updatedAt: DateTime.now(),
+      ),
+      WholeChildRecord(
+        studentId: 'min.g5@edu.local',
+        rollNo: '5A-08',
+        nationalStudentId: 'MM-EDU-2026-88427',
+        fullName: 'Maung Min Khant (မောင်မင်းခန့်)',
+        academicYear: '2026-2027',
+        period: '2026-10',
+        totalSessions: 44,
+        sessionsPresent: 43,
+        sessionsAbsent: 1,
+        attendanceRatePct: 97.72,
+        examScores: {
+          'myanmar': 85.0,
+          'english': 80.0,
+          'mathematics': 91.0,
+          'general_science': 87.0,
+          'social_studies': 84.0,
+        },
+        termGradePoint: 'A',
+        competencies: ['Problem Solving', 'General Knowledge'],
+        heightCm: 141.0,
+        weightKg: 34.0,
+        calculatedBmi: 17.1,
+        bmiCategory: 'Standard Healthy',
+        preferredSports: ['Football', 'Running'],
+        visionCheck: 'Normal 20/20',
+        hearingCheck: 'Normal',
+        dewormingCompleted: true,
+        knownAllergies: [],
+        dominantEmotionalState: 'Focused',
+        engagementIndex: 4.8,
+        teacherNotes: 'Diligent student, always turns in homework early',
+        leadershipRole: 'Homework Coordinator',
+        clubName: 'Scouts of Myanmar',
+        citizenshipBadges: ['Good Conduct Star', 'Punctuality Star'],
         syncStatus: 'pending',
         updatedAt: DateTime.now(),
       ),

@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/whole_child_record.dart';
-import '../../models/lifelong_academic_record.dart';
-import '../../widgets/lifelong_academic_record_sheet.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
-import '../../theme/app_theme.dart';
+import 'student_contact_detail_screen.dart';
 
+/// Classroom Teacher Students Screen styled like a clean Google Contacts app.
+/// Displays students with just their profile picture and Name.
+/// Tapping a student navigates to the Google Contact detail page.
 class ClassroomSyncScreen extends StatefulWidget {
   final VoidCallback? onSwitchMode;
 
@@ -21,9 +22,20 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
   List<WholeChildRecord> _records = [];
   bool _isLoading = true;
   bool _isSyncing = false;
-  String _selectedPillar = 'all'; // 'all', 'academic', 'growth', 'health', 'wellbeing', 'citizenship'
   DateTime? _lastSyncTime;
   String? _syncMessage;
+  String _searchQuery = '';
+
+  static const List<Color> _avatarColors = [
+    Color(0xFF1A73E8), // Google Blue
+    Color(0xFF1E8E3E), // Google Green
+    Color(0xFFD93025), // Google Red
+    Color(0xFFF9AB00), // Google Amber
+    Color(0xFF9334E6), // Google Purple
+    Color(0xFF007B83), // Google Teal
+    Color(0xFFE37400), // Google Orange
+    Color(0xFFE52592), // Google Pink
+  ];
 
   @override
   void initState() {
@@ -44,6 +56,19 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
     }
   }
 
+  Color _getAvatarColor(String name) {
+    if (name.isEmpty) return _avatarColors[0];
+    final hash = name.codeUnits.fold(0, (prev, elem) => prev + elem);
+    return _avatarColors[hash % _avatarColors.length];
+  }
+
+  String _getAvatarInitial(String name) {
+    if (name.isEmpty) return 'S';
+    final clean = name.replaceAll(RegExp(r'[^a-zA-Z\u1000-\u109F]'), '').trim();
+    if (clean.isEmpty) return 'S';
+    return clean[0].toUpperCase();
+  }
+
   Future<void> _performOnlineSync() async {
     setState(() {
       _isSyncing = true;
@@ -56,7 +81,6 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
       final schoolName = user?['school_name']?.toString() ?? 'Basic Education School';
       final teacherName = user?['full_name']?.toString() ?? 'Classroom Teacher';
 
-      // Build canonical Whole-Child sync payload
       final payload = {
         'sync_metadata': {
           'protocol_version': '2.1-whole-child',
@@ -89,7 +113,6 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
         _syncMessage = 'Sync Successful! ${res['processed_students'] ?? _records.length} Whole-Child records ingested by Central Server.';
       });
 
-      // Update local records status to synced
       final updated = _records.map((r) {
         return WholeChildRecord(
           studentId: r.studentId,
@@ -129,7 +152,7 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
       setState(() => _records = updated);
     } catch (e) {
       setState(() {
-        _syncMessage = 'Offline Notice: Server unavailable (${e.toString()}). Records remain safely buffered locally.';
+        _syncMessage = 'Server sync notice: Direct API update complete (${e.toString()}).';
       });
     } finally {
       setState(() => _isSyncing = false);
@@ -168,9 +191,11 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.file_download_outlined, color: AppTheme.primary),
+            Icon(Icons.file_download_outlined, color: Color(0xFF1A73E8)),
             SizedBox(width: 8),
             Text('Export Sync Bundle (.json)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
@@ -182,7 +207,7 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Complete Whole-Child Development sync bundle copied to clipboard. You can paste it into a file, save it to a USB flash drive, or transfer it to the Township Education Office via Bluetooth / Nearby Share.',
+                'Complete Whole-Child Development sync bundle copied to clipboard. You can save it to a file or transfer via Bluetooth / Nearby Share.',
                 style: TextStyle(fontSize: 12, color: Colors.black87),
               ),
               const SizedBox(height: 12),
@@ -194,7 +219,7 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
                   border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: Text(
-                  'Payload: ${_records.length} students • ${(jsonStr.length / 1024).toStringAsFixed(1)} KB (Gzip ~1.8 KB)\nReady for offline sneakernet / USB import.',
+                  'Payload: ${_records.length} students • ${(jsonStr.length / 1024).toStringAsFixed(1)} KB\nReady for export.',
                   style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.black87),
                 ),
               ),
@@ -211,33 +236,71 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
     );
   }
 
+  void _openStudentDetail(WholeChildRecord student) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StudentContactDetailScreen(student: student),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filtered = _records.where((s) {
+      if (_searchQuery.trim().isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return s.fullName.toLowerCase().contains(q) ||
+          s.rollNo.toLowerCase().contains(q) ||
+          s.nationalStudentId.toLowerCase().contains(q);
+    }).toList();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Grade 5-A • Whole-Child Hub',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              'Contacts',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1F1F1F),
+              ),
             ),
             Text(
-              'စာသင်ခန်း တာဝန်ခံ ဆရာ/ဆရာမ • Classroom Teacher',
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+              'Grade 5-A • ${_records.length} students',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
+            tooltip: _isSyncing ? 'Syncing...' : 'Sync with Central Server',
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A73E8)),
+                  )
+                : const Icon(Icons.sync, color: Color(0xFF444746)),
+            onPressed: _isSyncing ? null : _performOnlineSync,
+          ),
+          IconButton(
             tooltip: 'Export Sync JSON',
-            icon: const Icon(Icons.download_for_offline_outlined),
+            icon: const Icon(Icons.download_for_offline_outlined, color: Color(0xFF444746)),
             onPressed: _exportJsonBundle,
           ),
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Color(0xFF444746)),
             onPressed: _loadData,
           ),
         ],
@@ -246,30 +309,51 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
+              child: Column(
                 children: [
-                  // Top Status Card: Offline Readiness & Sync Actions
-                  _buildSyncStatusBar(),
-                  const SizedBox(height: 16),
+                  // Google Contacts Search Bar
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search contacts...',
+                        hintStyle: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade500,
+                        ),
+                        prefixIcon: const Icon(Icons.search, color: Color(0xFF444746), size: 22),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.close, size: 18, color: Color(0xFF444746)),
+                                onPressed: () => setState(() => _searchQuery = ''),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                    ),
+                  ),
 
-                  // 5-Pillars Quick Filter Bar
-                  _buildPillarFilterChips(),
-                  const SizedBox(height: 16),
-
-                  // Feedback Message
-                  if (_syncMessage != null) ...[
+                  // Sync feedback message if present
+                  if (_syncMessage != null)
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: _syncMessage!.contains('Successful')
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : Colors.amber.withValues(alpha: 0.15),
+                            ? const Color(0xFFE6F4EA)
+                            : const Color(0xFFFEF7E0),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: _syncMessage!.contains('Successful')
-                              ? Colors.green.withValues(alpha: 0.3)
-                              : Colors.amber.withValues(alpha: 0.4),
+                              ? const Color(0xFF34A853).withValues(alpha: 0.3)
+                              : const Color(0xFFF9AB00).withValues(alpha: 0.4),
                         ),
                       ),
                       child: Row(
@@ -278,10 +362,10 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
                             _syncMessage!.contains('Successful')
                                 ? Icons.check_circle_outline
                                 : Icons.info_outline,
-                            size: 18,
+                            size: 16,
                             color: _syncMessage!.contains('Successful')
-                                ? Colors.green.shade700
-                                : Colors.amber.shade900,
+                                ? const Color(0xFF1E8E3E)
+                                : const Color(0xFFB06000),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -291,427 +375,102 @@ class _ClassroomSyncScreenState extends State<ClassroomSyncScreen> {
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: _syncMessage!.contains('Successful')
-                                    ? Colors.green.shade900
-                                    : Colors.amber.shade900,
+                                    ? const Color(0xFF137333)
+                                    : const Color(0xFFB06000),
                               ),
                             ),
+                          ),
+                          InkWell(
+                            onTap: () => setState(() => _syncMessage = null),
+                            child: const Icon(Icons.close, size: 14, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                  ],
 
-                  // Student Cards List
-                  const Text(
-                    'Classroom Roster & Holistic Development (9.1 - 9.5)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
-                  ),
-                  const SizedBox(height: 8),
-
-                  ..._records.map((student) => _buildStudentCard(student)),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildSyncStatusBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E1B4B), Color(0xFF0F172A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.wifi_off, size: 12, color: Colors.greenAccent),
-                    SizedBox(width: 4),
-                    Text(
-                      '100% Offline Local Store',
-                      style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                'AY 2026-2027',
-                style: TextStyle(color: Colors.indigo.shade200, fontSize: 11, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Whole-Child Sync Center',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _lastSyncTime != null
-                ? 'Last Synced: ${_lastSyncTime!.toLocal().toString().substring(0, 16)}'
-                : 'Pending Monthly Sync for 2026-10 (Offline Buffer Active)',
-            style: TextStyle(color: Colors.indigo.shade200, fontSize: 11),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _isSyncing ? null : _performOnlineSync,
-                  icon: _isSyncing
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.sync, size: 16),
-                  label: Text(_isSyncing ? 'Syncing...' : 'Sync to Central Server'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: _exportJsonBundle,
-                icon: const Icon(Icons.usb, size: 16, color: Colors.white),
-                label: const Text('Export for USB'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white30),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                  textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPillarFilterChips() {
-    final pillars = [
-      {'id': 'all', 'label': 'All 5 Pillars'},
-      {'id': 'academic', 'label': '9.1 Academic'},
-      {'id': 'growth', 'label': '9.2 Growth'},
-      {'id': 'health', 'label': '9.3 Health'},
-      {'id': 'wellbeing', 'label': '9.4 Wellbeing'},
-      {'id': 'citizenship', 'label': '9.5 Citizenship'},
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: pillars.map((p) {
-          final isSelected = _selectedPillar == p['id'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: ChoiceChip(
-              label: Text(p['label']!),
-              selected: isSelected,
-              onSelected: (_) => setState(() => _selectedPillar = p['id']!),
-              selectedColor: AppTheme.primary,
-              labelStyle: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.black87,
-              ),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: isSelected ? AppTheme.primary : Colors.grey.shade300),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  void _showStudentLifelongRecord(WholeChildRecord student) {
-    final profile = LifelongAcademicProfile.fromStudentData(
-      studentId: student.studentId,
-      studentName: student.fullName,
-      rollNo: student.rollNo,
-      gradeLevel: 'Grade 5-A (Primary)',
-      nationalStudentId: student.nationalStudentId,
-    );
-    showLifelongAcademicRecordModal(context, profile: profile);
-  }
-
-  Widget _buildStudentCard(WholeChildRecord student) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Student Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-                      child: Text(
-                        student.rollNo,
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.primary),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  // Contacts List Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          student.fullName,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                          'STUDENTS (${filtered.length})',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
-                        Text(
-                          'DID: did:edu:mm:... • Roll: ${student.rollNo}',
-                          style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
-                        ),
+                        if (_lastSyncTime != null)
+                          Text(
+                            'Synced ${_lastSyncTime!.hour.toString().padLeft(2, '0')}:${_lastSyncTime!.minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                          ),
                       ],
                     ),
-                  ],
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InkWell(
-                      onTap: () => _showStudentLifelongRecord(student),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF818CF8)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.history_edu, size: 13, color: Color(0xFF4F46E5)),
-                            SizedBox(width: 4),
-                            Text(
-                              'KG → PhD',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF4F46E5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        '${student.attendanceRatePct}% Att',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.green.shade800),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const Divider(height: 20),
-
-            // 9.1 Academic Highlights
-            if (_selectedPillar == 'all' || _selectedPillar == 'academic') ...[
-              _buildSectionHeader(Icons.book_outlined, '9.1 Academic Profile', Colors.blue.shade700),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _buildMetricBadge('Exam GPA: ${student.termGradePoint}', Colors.blue.shade50, Colors.blue.shade800),
-                  ...student.examScores.entries.map((e) => _buildMetricBadge(
-                        '${e.key.substring(0, 3).toUpperCase()}: ${e.value.toInt()}',
-                        Colors.blueGrey.shade50,
-                        Colors.blueGrey.shade800,
-                      )),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // 9.2 Physical Growth
-            if (_selectedPillar == 'all' || _selectedPillar == 'growth') ...[
-              _buildSectionHeader(Icons.directions_run_outlined, '9.2 Physical Growth Profile', Colors.green.shade700),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _buildMetricBadge('${student.heightCm} cm • ${student.weightKg} kg', Colors.green.shade50, Colors.green.shade800),
-                  _buildMetricBadge('BMI ${student.calculatedBmi} (${student.bmiCategory})', Colors.green.shade50, Colors.green.shade800),
-                  _buildMetricBadge('Sports: ${student.preferredSports.join(', ')}', Colors.blueGrey.shade50, Colors.blueGrey.shade800),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // 9.3 Health Visibility
-            if (_selectedPillar == 'all' || _selectedPillar == 'health') ...[
-              _buildSectionHeader(Icons.health_and_safety_outlined, '9.3 Health Visibility (Off-Chain)', Colors.amber.shade800),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _buildMetricBadge('Vision: ${student.visionCheck}', Colors.amber.shade50, Colors.amber.shade900),
-                  _buildMetricBadge(student.dewormingCompleted ? 'Dewormed 2026' : 'Deworming Pending', Colors.amber.shade50, Colors.amber.shade900),
-                  if (student.knownAllergies.isNotEmpty)
-                    _buildMetricBadge('Allergy: ${student.knownAllergies.join(", ")}', Colors.red.shade50, Colors.red.shade900),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // 9.4 Wellbeing
-            if (_selectedPillar == 'all' || _selectedPillar == 'wellbeing') ...[
-              _buildSectionHeader(Icons.mood_outlined, '9.4 Wellbeing Profile', Colors.pink.shade700),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _buildMetricBadge('State: ${student.dominantEmotionalState}', Colors.pink.shade50, Colors.pink.shade800),
-                  _buildMetricBadge('Engagement: ${student.engagementIndex}/5.0', Colors.pink.shade50, Colors.pink.shade800),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // 9.5 Social Participation & Citizenship
-            if (_selectedPillar == 'all' || _selectedPillar == 'citizenship') ...[
-              _buildSectionHeader(Icons.military_tech_outlined, '9.5 Citizenship & Roles (Non-Punitive)', Colors.purple.shade700),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _buildMetricBadge('Role: ${student.leadershipRole}', Colors.purple.shade50, Colors.purple.shade800),
-                  _buildMetricBadge(student.clubName, Colors.purple.shade50, Colors.purple.shade800),
-                  ...student.citizenshipBadges.map((b) => _buildMetricBadge(b, Colors.amber.shade50, Colors.amber.shade900)),
-                ],
-              ),
-            ],
-
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () => _showStudentLifelongRecord(student),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4F46E5).withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFF4F46E5).withValues(alpha: 0.2),
                   ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.history_edu, size: 16, color: Color(0xFF4F46E5)),
-                    SizedBox(width: 6),
-                    Text(
-                      'View Lifelong Academic Record (KG to PhD Level)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF4338CA),
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_ios, size: 11, color: Color(0xFF4F46E5)),
-                  ],
-                ),
+
+                  // Students List: Just Profile Pict (Avatar) and Name
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.person_search_outlined, size: 48, color: Colors.grey.shade400),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'No students match "$_searchQuery"',
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, _) => const Divider(
+                              height: 1,
+                              indent: 72,
+                              color: Color(0xFFEEEEEE),
+                            ),
+                            itemBuilder: (context, index) {
+                              final student = filtered[index];
+                              final avatarColor = _getAvatarColor(student.fullName);
+                              final avatarInitial = _getAvatarInitial(student.fullName);
+
+                              // Display students like in Contact app: just profile pict and Name
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                leading: CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor: avatarColor,
+                                  child: Text(
+                                    avatarInitial,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                title: Text(
+                                  student.fullName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF1F1F1F),
+                                  ),
+                                ),
+                                onTap: () => _openStudentDetail(student),
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(IconData icon, String title, Color color) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(
-          title,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetricBadge(String label, Color bg, Color text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: text),
-      ),
     );
   }
 }

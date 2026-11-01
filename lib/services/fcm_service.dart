@@ -42,6 +42,11 @@ class FcmService {
   /// Initializes Firebase and FCM notification handlers
   static Future<void> initialize() async {
     if (_isInitialized) return;
+    if (kIsWeb) {
+      debugPrint('[FCM] Skipping FCM background registration on Web platform.');
+      _isInitialized = true;
+      return;
+    }
 
     try {
       // 1. Initialize Firebase App
@@ -184,6 +189,7 @@ class FcmService {
 
   /// Synchronizes FCM device token with the backend edu_server
   static Future<void> syncDeviceToken() async {
+    if (kIsWeb) return;
     try {
       final token = await StorageService.getToken();
       if (token == null) {
@@ -232,6 +238,7 @@ class FcmService {
 
   /// Unregisters the device token from the backend and deletes from FCM
   static Future<void> unregisterToken() async {
+    if (kIsWeb) return;
     try {
       _tokenRefreshSub?.cancel();
       _tokenRefreshSub = null;
